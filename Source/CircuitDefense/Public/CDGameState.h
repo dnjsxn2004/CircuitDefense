@@ -22,15 +22,22 @@ public:
 	ACDGameState();
 
 	UPROPERTY(BlueprintReadOnly, Category = "Game Flow")
-	ECDGamePhase CurrentPhase;
+	ECDGamePhase CurrentPhase = ECDGamePhase::Preparation;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Wave")
-	int32 CurrentWave;
+	int32 CurrentWave = 0;
 	
 	UPROPERTY(BlueprintReadOnly, Category = "Game Flow")
 	FOnGamePhaseChanged OnGamePhaseChanged;
 
 	UFUNCTION(BlueprintCallable, Category = "Game State")
 	void SetGamePhase(ECDGamePhase NewPhase);
+
+	UPROPERTY(BlueprintReadOnly, Category = "Game State")
+	float RemainingTime = 0.0f;
+
+	void SetCurrentWave(int32 NewWave);
+	void SetRemainingTime(float NewTime);
+
 
 };

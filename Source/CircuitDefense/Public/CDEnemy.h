@@ -1,0 +1,61 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
+#include "CDEnemy.generated.h"
+
+class ACDCore;
+class UStaticMeshComponent;
+
+UCLASS()
+class CIRCUITDEFENSE_API ACDEnemy : public AActor
+{
+	GENERATED_BODY()
+	
+public:	
+	// Sets default values for this actor's properties
+	ACDEnemy();
+
+	virtual void Tick(float DeltaTime) override;
+
+	UFUNCTION(BlueprintCallable, Category = "Enemy")
+	void ApplyEnemyDamge(float DamageAmount);
+
+	UFUNCTION(BlueprintPure, Category = "Enemy")
+	float GetHealthPercent() const;
+
+protected:
+	// Called when the game starts or when spawned
+	virtual void BeginPlay() override;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy")
+	TObjectPtr<UStaticMeshComponent> EnemyMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy|Movement", meta = (ClamMin = "0.0"))
+	float MoveSpeed = 200.0f;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Enemy|Attack", meta = (ClampMin = "0.0"))
+	float CoreDamage = 10.0f;
+	
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Enemy|Attack", meta = (ClampMin = "0.0"))
+	float ReachDistance = 100.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy|Health", meta = (ClamMin = "1.0"))
+	float MaxHealth = 30.0f;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Enemy|Health")
+	float CurrentHealth = 30.0f;
+
+private:
+	UPROPERTY()
+	TObjectPtr<ACDCore> TargetCore;
+
+	bool bReachedCore = false;
+	bool bDead = false;
+
+	void FindTargetCore();
+	void ReachCore();
+
+};
