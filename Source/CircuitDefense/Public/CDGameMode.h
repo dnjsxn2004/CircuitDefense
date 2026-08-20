@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
+#include "CDWaveConfig.h"
 #include "CDGameMode.generated.h"
 
 /**
@@ -18,7 +19,23 @@ public :
 	ACDGameMode();
 
 protected:
-	virtual void StartPlay() override;
+	virtual void BeginPlay() override;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Wave")
+	TArray<FCDWaveConfig> WaveConfig;
+
+private:
+	FTimerHandle PhaseTimerHandle;
+
+	int32 ActiveWaveIndex = 0;
+
+	void StartPreparation();
+	void StartCombat();
+	void FinishWave();
+	void StartNextWave();
+	void CompleteAllWaves();
+
+	void StartPhaseTimer(float Duration);
+	void UpdatePhaseTimer();
 
 };

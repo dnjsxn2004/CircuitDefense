@@ -26,3 +26,11 @@ void ACDGameState::SetGamePhase(ECDGamePhase NewPhase)
 		static_cast<int32>(CurrentPhase)
 	);
 }
+
+void ACDGameState::SetCurrentWave(int32 NewWave)
+{
+}
+
+void ACDGameState::SetRemainingTime(float NewTime)
+{
+}
