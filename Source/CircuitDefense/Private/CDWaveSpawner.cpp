@@ -158,6 +158,31 @@ void ACDWaveSpawner::StopSpawning()
 	);
 }
 
+void ACDWaveSpawner::CompleteSpawning()
+{
+	if (bSpawningCompleted)
+	{
+		return;
+	}
+
+	bSpawningCompleted = true;
+
+	GetWorldTimerManager().ClearTimer(
+		SpawnTimerHandle
+	);
+
+	UE_LOG(
+		LogTemp,
+		Display,
+		TEXT(
+			"WaveSpawner Complete - Spawned: %d"
+		),
+		SpawnedCount
+	);
+
+	OnSpawningCompleted.Broadcast();
+}
+
 void ACDWaveSpawner::SpawnEnemy()
 {
 	UE_LOG(
@@ -183,16 +208,7 @@ void ACDWaveSpawner::SpawnEnemy()
 
 	if (SpawnedCount >= TargetSpawnCount)
 	{
-		StopSpawning();
-
-		UE_LOG(
-			LogTemp,
-			Display,
-			TEXT(
-				"WaveSpawner Complete - Spawned: %d"
-			),
-			SpawnedCount
-		);
+		CompleteSpawning();
 
 		return;
 	}
@@ -255,6 +271,8 @@ void ACDWaveSpawner::SpawnEnemy()
 
 	++SpawnedCount;
 
+	OnEnemySpawned.Broadcast(SpawnedEnemy);
+
 	UE_LOG(
 		LogTemp,
 		Display,
@@ -267,15 +285,8 @@ void ACDWaveSpawner::SpawnEnemy()
 
 	if (SpawnedCount >= TargetSpawnCount)
 	{
-		StopSpawning();
-
-		UE_LOG(
-			LogTemp,
-			Display,
-			TEXT(
-				"WaveSpawner Complete - Spawned: %d"
-			),
-			SpawnedCount
-		);
+		CompleteSpawning();
 	}
 }
+
+
