@@ -7,6 +7,7 @@
 #include "CDWaveConfig.h"
 #include "CDGameMode.generated.h"
 
+class ACDEnemy;
 class ACDWaveSpawner;
 /**
  * 
@@ -29,7 +30,21 @@ private:
 	FTimerHandle PhaseTimerHandle;
 
 	int32 ActiveWaveIndex = 0;
+	int32 AliveEnemyCount = 0;
 
+	bool bSpawningCompleted = false;
+	bool bWaveFinishing = false;
+
+	UFUNCTION()
+	void HandleEnemySpawned(ACDEnemy* SpawnedEnemy);
+
+	UFUNCTION()
+	void HandleEnemyDestroyed(AActor* DestroyedActor);
+	
+	UFUNCTION()
+	void HandleSpawningCompleted();
+	
+	void TryFinishWave();
 	void StartPreparation();
 	void StartCombat();
 	void FinishWave();
