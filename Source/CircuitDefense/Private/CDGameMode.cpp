@@ -242,44 +242,7 @@ void ACDGameMode::FinishWave()
 
 	if (IsValid(WaveSpawner))
 	{
-		WaveSpawner->OnEnemySpawned.RemoveDynamic(
-			this,
-			&ACDGameMode::HandleEnemySpawned
-		);
-
-		WaveSpawner->OnSpawningCompleted.RemoveDynamic(
-			this,
-			&ACDGameMode::HandleSpawningCompleted
-		);
-
-		WaveSpawner->OnEnemySpawned.AddDynamic(
-			this,
-			&ACDGameMode::HandleEnemySpawned
-		);
-
-		WaveSpawner->OnSpawningCompleted.AddDynamic(
-			this,
-			&ACDGameMode::HandleSpawningCompleted
-		);
-
-		UE_LOG(
-			LogTemp,
-			Display,
-			TEXT(
-				"GameMode found WaveSpawner: %s"
-			),
-			*WaveSpawner->GetName()
-		);
-	}
-	else
-	{
-		UE_LOG(
-			LogTemp,
-			Error,
-			TEXT(
-				"GameMode could not find CDWaveSpawner"
-			)
-		);
+		WaveSpawner->StopSpawning();
 	}
 
 	ACDGameState* CDGameState = GetGameState<ACDGameState>();
