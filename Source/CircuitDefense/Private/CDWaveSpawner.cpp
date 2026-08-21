@@ -75,6 +75,7 @@ void ACDWaveSpawner::StartSpawning(
 
 	TargetSpawnCount = InSpawnCount;
 	SpawnedCount = 0;
+	bSpawningCompleted = false;
 
 	const float ValidSpawnInterval =
 		FMath::Max(InSpawnInterval, 0.1f);

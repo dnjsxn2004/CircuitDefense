@@ -2,6 +2,7 @@
 
 
 #include "CDGameMode.h"
+#include "CDEnemy.h"
 #include "CDGameState.h"
 #include "CDPlayerController.h"
 #include "CDWaveSpawner.h"
@@ -45,6 +46,98 @@ void ACDGameMode::BeginPlay()
 	FindWaveSpawner();
 	StartPreparation();
 
+}
+
+void ACDGameMode::HandleEnemySpawned(
+	ACDEnemy* SpawnedEnemy
+)
+{
+	if (!IsValid(SpawnedEnemy))
+	{
+		return;
+	}
+
+	++AliveEnemyCount;
+
+	SpawnedEnemy->OnDestroyed.AddDynamic(
+		this,
+		&ACDGameMode::HandleEnemyDestroyed
+	);
+
+	UE_LOG(
+		LogTemp,
+		Display,
+		TEXT(
+			"Enemy registered - Alive: %d"
+		),
+		AliveEnemyCount
+	);
+}
+
+void ACDGameMode::HandleEnemyDestroyed(
+	AActor* DestroyedActor
+)
+{
+	AliveEnemyCount = FMath::Max(
+		AliveEnemyCount - 1,
+		0
+	);
+
+	UE_LOG(
+		LogTemp,
+		Display,
+		TEXT(
+			"Enemy removed - Alive: %d"
+		),
+		AliveEnemyCount
+	);
+
+	TryFinishWave();
+}
+
+void ACDGameMode::HandleSpawningCompleted()
+{
+	bSpawningCompleted = true;
+
+	UE_LOG(
+		LogTemp,
+		Display,
+		TEXT(
+			"GameMode received spawning complete"
+		)
+	);
+
+	TryFinishWave();
+}
+
+void ACDGameMode::TryFinishWave()
+{
+	if (bWaveFinishing)
+	{
+		return;
+	}
+
+	ACDGameState* CDGameState =
+		GetGameState<ACDGameState>();
+
+	if (!IsValid(CDGameState))
+	{
+		return;
+	}
+
+	if (CDGameState->CurrentPhase !=
+		ECDGamePhase::Combat)
+	{
+		return;
+	}
+
+	if (!bSpawningCompleted ||
+		AliveEnemyCount > 0)
+	{
+		return;
+	}
+
+	FinishWave();
 }
 
 void ACDGameMode::StartPreparation()
@@ -96,6 +189,10 @@ void ACDGameMode::StartCombat()
 
 	const FCDWaveConfig& CurrentConfig = WaveConfig[ActiveWaveIndex];
 
+	AliveEnemyCount = 0;
+	bSpawningCompleted = false;
+	bWaveFinishing = false;
+
 	CDGameState->SetGamePhase(ECDGamePhase::Combat);
 
 	UE_LOG(
@@ -132,9 +229,57 @@ void ACDGameMode::StartCombat()
 
 void ACDGameMode::FinishWave()
 {
+	if (bWaveFinishing)
+	{
+		return;
+	}
+
+	bWaveFinishing = true;
+
+	GetWorldTimerManager().ClearTimer(
+		PhaseTimerHandle
+	);
+
 	if (IsValid(WaveSpawner))
 	{
-		WaveSpawner->StopSpawning();
+		WaveSpawner->OnEnemySpawned.RemoveDynamic(
+			this,
+			&ACDGameMode::HandleEnemySpawned
+		);
+
+		WaveSpawner->OnSpawningCompleted.RemoveDynamic(
+			this,
+			&ACDGameMode::HandleSpawningCompleted
+		);
+
+		WaveSpawner->OnEnemySpawned.AddDynamic(
+			this,
+			&ACDGameMode::HandleEnemySpawned
+		);
+
+		WaveSpawner->OnSpawningCompleted.AddDynamic(
+			this,
+			&ACDGameMode::HandleSpawningCompleted
+		);
+
+		UE_LOG(
+			LogTemp,
+			Display,
+			TEXT(
+				"GameMode found WaveSpawner: %s"
+			),
+			*WaveSpawner->GetName()
+		);
+	}
+	else
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT(
+				"GameMode could not find CDWaveSpawner"
+			)
+		);
 	}
 
 	ACDGameState* CDGameState = GetGameState<ACDGameState>();
@@ -256,7 +401,20 @@ void ACDGameMode::UpdatePhaseTimer()
 		break;
 
 	case ECDGamePhase::Combat:
-		FinishWave();
+		UE_LOG(
+			LogTemp,
+			Display,
+			TEXT(
+				"Combat timer expired - "
+				"SpawningCompleted: %s, Alive: %d"
+			),
+			bSpawningCompleted
+			? TEXT("true")
+			: TEXT("false"),
+			AliveEnemyCount
+		);
+
+		TryFinishWave();
 		break;
 
 	default:
@@ -266,28 +424,54 @@ void ACDGameMode::UpdatePhaseTimer()
 
 void ACDGameMode::FindWaveSpawner()
 {
-	AActor* FoundActor = UGameplayStatics::GetActorOfClass(
-		this,
-		ACDWaveSpawner::StaticClass()
-	);
-
-	WaveSpawner = Cast<ACDWaveSpawner>(FoundActor);
-
-	if (IsValid(WaveSpawner))
-	{
-		UE_LOG(
-			LogTemp,
-			Display,
-			TEXT("GameMode found WaveSpawner: %s"),
-			*WaveSpawner->GetName()
+	AActor* FoundActor =
+		UGameplayStatics::GetActorOfClass(
+			this,
+			ACDWaveSpawner::StaticClass()
 		);
-	}
-	else
+
+	WaveSpawner =
+		Cast<ACDWaveSpawner>(FoundActor);
+
+	if (!IsValid(WaveSpawner))
 	{
 		UE_LOG(
 			LogTemp,
 			Error,
-			TEXT("GameMode could not find CDWaveSpawner")
+			TEXT(
+				"GameMode could not find CDWaveSpawner"
+			)
 		);
+
+		return;
 	}
+
+	WaveSpawner->OnEnemySpawned.RemoveDynamic(
+		this,
+		&ACDGameMode::HandleEnemySpawned
+	);
+
+	WaveSpawner->OnSpawningCompleted.RemoveDynamic(
+		this,
+		&ACDGameMode::HandleSpawningCompleted
+	);
+
+	WaveSpawner->OnEnemySpawned.AddDynamic(
+		this,
+		&ACDGameMode::HandleEnemySpawned
+	);
+
+	WaveSpawner->OnSpawningCompleted.AddDynamic(
+		this,
+		&ACDGameMode::HandleSpawningCompleted
+	);
+
+	UE_LOG(
+		LogTemp,
+		Display,
+		TEXT(
+			"GameMode found WaveSpawner and bound events: %s"
+		),
+		*WaveSpawner->GetName()
+	);
 }
