@@ -245,6 +245,7 @@ void ACDGameMode::FinishWave()
 		WaveSpawner->StopSpawning();
 	}
 
+	//commit
 	ACDGameState* CDGameState = GetGameState<ACDGameState>();
 
 	if (!IsValid(CDGameState))
