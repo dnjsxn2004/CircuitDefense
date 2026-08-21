@@ -7,6 +7,7 @@
 #include "CDWaveConfig.h"
 #include "CDGameMode.generated.h"
 
+class ACDWaveSpawner;
 /**
  * 
  */
@@ -37,5 +38,10 @@ private:
 
 	void StartPhaseTimer(float Duration);
 	void UpdatePhaseTimer();
+
+	UPROPERTY()
+	TObjectPtr<ACDWaveSpawner> WaveSpawner;
+
+	void FindWaveSpawner();
 
 };

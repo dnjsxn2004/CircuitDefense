@@ -4,6 +4,9 @@
 #include "CDGameMode.h"
 #include "CDGameState.h"
 #include "CDPlayerController.h"
+#include "CDWaveSpawner.h"
+#include "Kismet/GameplayStatics.h"
+#include "TimerManager.h"
 
 ACDGameMode::ACDGameMode()
 {
@@ -12,21 +15,21 @@ ACDGameMode::ACDGameMode()
 
 	FCDWaveConfig Wave1;
 	Wave1.PreparationTime = 3.0f;
-	Wave1.CombatTime = 5.0f;
+	Wave1.CombatTime = 10.0f;
 	Wave1.SpawnCount = 5;
 	Wave1.SpawnInterval = 2.0f;
 	WaveConfig.Add(Wave1);
 	
 	FCDWaveConfig Wave2;
 	Wave2.PreparationTime = 3.0f;
-	Wave2.CombatTime = 7.0f;
+	Wave2.CombatTime = 14.0f;
 	Wave2.SpawnCount = 8;
 	Wave2.SpawnInterval = 1.5f;
 	WaveConfig.Add(Wave2);
 	
 	FCDWaveConfig Wave3;
 	Wave3.PreparationTime = 3.0f;
-	Wave3.CombatTime = 9.0f;
+	Wave3.CombatTime = 15.0f;
 	Wave3.SpawnCount = 12;
 	Wave3.SpawnInterval = 1.0f;
 	WaveConfig.Add(Wave3);
@@ -38,6 +41,8 @@ void ACDGameMode::BeginPlay()
 	Super::BeginPlay();
 
 	ActiveWaveIndex = 0;
+
+	FindWaveSpawner();
 	StartPreparation();
 
 }
@@ -96,16 +101,42 @@ void ACDGameMode::StartCombat()
 	UE_LOG(
 		LogTemp,
 		Display,
-		TEXT("Wave %d Start - Spawn Count: %d"),
+		TEXT(
+			"Wave %d Start - CombatTime: %.1f, "
+			"SpawnCount: %d, SpawnInterval: %.1f"
+		),
 		ActiveWaveIndex + 1,
-		CurrentConfig.SpawnCount
+		CurrentConfig.CombatTime,
+		CurrentConfig.SpawnCount,
+		CurrentConfig.SpawnInterval
 	);
+
+	if (IsValid(WaveSpawner))
+	{
+		WaveSpawner->StartSpawning(
+			CurrentConfig.SpawnCount,
+			CurrentConfig.SpawnInterval
+		);
+	}
+	else
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT("Cannot start spawning: WaveSpawner is invalid")
+		);
+	}
 
 	StartPhaseTimer(CurrentConfig.CombatTime);
 }
 
 void ACDGameMode::FinishWave()
 {
+	if (IsValid(WaveSpawner))
+	{
+		WaveSpawner->StopSpawning();
+	}
+
 	ACDGameState* CDGameState = GetGameState<ACDGameState>();
 
 	if (!IsValid(CDGameState))
@@ -150,6 +181,11 @@ void ACDGameMode::StartNextWave()
 void ACDGameMode::CompleteAllWaves()
 {
 	GetWorldTimerManager().ClearTimer(PhaseTimerHandle);
+
+	if (IsValid(WaveSpawner))
+	{
+		WaveSpawner->StopSpawning();
+	}
 
 	ACDGameState* CDGameState = GetGameState<ACDGameState>();
 
@@ -225,5 +261,33 @@ void ACDGameMode::UpdatePhaseTimer()
 
 	default:
 		break;
+	}
+}
+
+void ACDGameMode::FindWaveSpawner()
+{
+	AActor* FoundActor = UGameplayStatics::GetActorOfClass(
+		this,
+		ACDWaveSpawner::StaticClass()
+	);
+
+	WaveSpawner = Cast<ACDWaveSpawner>(FoundActor);
+
+	if (IsValid(WaveSpawner))
+	{
+		UE_LOG(
+			LogTemp,
+			Display,
+			TEXT("GameMode found WaveSpawner: %s"),
+			*WaveSpawner->GetName()
+		);
+	}
+	else
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT("GameMode could not find CDWaveSpawner")
+		);
 	}
 }
