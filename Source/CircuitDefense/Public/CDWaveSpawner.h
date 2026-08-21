@@ -9,6 +9,16 @@
 class ACDEnemy;
 class USceneComponent;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
+	FOnEnemySpawned,
+	ACDEnemy*,
+	SpawnedEnemy
+);
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(
+	FOnSpawningCompleted
+);
+
 UCLASS()
 class CIRCUITDEFENSE_API ACDWaveSpawner : public AActor
 {
@@ -25,6 +35,18 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Wave Spawner")
 	void StopSpawning();
+
+	UPROPERTY(
+		BlueprintAssignable,
+		Category = "Wave Spawner"
+	)
+	FOnEnemySpawned OnEnemySpawned;
+
+	UPROPERTY(
+		BlueprintAssignable,
+		Category = "Wave Spawner"
+	)
+	FOnSpawningCompleted OnSpawningCompleted;
 
 protected:
 	virtual void BeginPlay() override;
@@ -73,9 +95,13 @@ protected:
 private:
 	void SpawnEnemy();
 
+	void CompleteSpawning();
+
 	FTimerHandle SpawnTimerHandle;
 
 	int32 TargetSpawnCount = 0;
 
 	int32 SpawnedCount = 0;
+
+	bool bSpawningCompleted = false;
 };
