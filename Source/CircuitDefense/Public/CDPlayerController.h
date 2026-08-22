@@ -31,7 +31,14 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> AttackAction;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat", meta = (ClampMin = "100.0"))
+	float AttackRange = 1000.0f;
+
 private:
 	void HandleAttack(const FInputActionValue& InputActionValue);
 
+	void PerformAttackTrace();
+
 };
+
+
