@@ -6,6 +6,7 @@
 #include "CDGameState.h"
 #include "CDPlayerController.h"
 #include "CDWaveSpawner.h"
+#include "CDCore.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
 
@@ -44,6 +45,7 @@ void ACDGameMode::BeginPlay()
 	ActiveWaveIndex = 0;
 
 	FindWaveSpawner();
+	FindCore();
 	StartPreparation();
 
 }
@@ -112,6 +114,11 @@ void ACDGameMode::HandleSpawningCompleted()
 
 void ACDGameMode::TryFinishWave()
 {
+	if (bGameOver)
+	{
+		return;
+	}
+
 	if (bWaveFinishing)
 	{
 		return;
@@ -142,6 +149,11 @@ void ACDGameMode::TryFinishWave()
 
 void ACDGameMode::StartPreparation()
 {
+	if (bGameOver)
+	{
+		return;
+	}
+
 	if (!WaveConfig.IsValidIndex(ActiveWaveIndex))
 	{
 		CompleteAllWaves();
@@ -174,6 +186,11 @@ void ACDGameMode::StartPreparation()
 
 void ACDGameMode::StartCombat()
 {
+	if (bGameOver)
+	{
+		return;
+	}
+
 	if (!WaveConfig.IsValidIndex(ActiveWaveIndex))
 	{
 		CompleteAllWaves();
@@ -229,6 +246,11 @@ void ACDGameMode::StartCombat()
 
 void ACDGameMode::FinishWave()
 {
+	if (bGameOver)
+	{
+		return;
+	}
+
 	if (bWaveFinishing)
 	{
 		return;
@@ -242,46 +264,10 @@ void ACDGameMode::FinishWave()
 
 	if (IsValid(WaveSpawner))
 	{
-		WaveSpawner->OnEnemySpawned.RemoveDynamic(
-			this,
-			&ACDGameMode::HandleEnemySpawned
-		);
-
-		WaveSpawner->OnSpawningCompleted.RemoveDynamic(
-			this,
-			&ACDGameMode::HandleSpawningCompleted
-		);
-
-		WaveSpawner->OnEnemySpawned.AddDynamic(
-			this,
-			&ACDGameMode::HandleEnemySpawned
-		);
-
-		WaveSpawner->OnSpawningCompleted.AddDynamic(
-			this,
-			&ACDGameMode::HandleSpawningCompleted
-		);
-
-		UE_LOG(
-			LogTemp,
-			Display,
-			TEXT(
-				"GameMode found WaveSpawner: %s"
-			),
-			*WaveSpawner->GetName()
-		);
-	}
-	else
-	{
-		UE_LOG(
-			LogTemp,
-			Error,
-			TEXT(
-				"GameMode could not find CDWaveSpawner"
-			)
-		);
+		WaveSpawner->StopSpawning();
 	}
 
+	//commit
 	ACDGameState* CDGameState = GetGameState<ACDGameState>();
 
 	if (!IsValid(CDGameState))
@@ -311,6 +297,11 @@ void ACDGameMode::FinishWave()
 
 void ACDGameMode::StartNextWave()
 {
+	if (bGameOver)
+	{
+		return;
+	}
+
 	++ActiveWaveIndex;
 
 	if (WaveConfig.IsValidIndex(ActiveWaveIndex))
@@ -366,6 +357,13 @@ void ACDGameMode::StartPhaseTimer(float Duration)
 
 void ACDGameMode::UpdatePhaseTimer()
 {
+	if (bGameOver)
+	{
+		GetWorldTimerManager().ClearTimer(PhaseTimerHandle);
+		
+		return;
+	}
+
 	ACDGameState* CDGameState = GetGameState<ACDGameState>();
 
 	if (!IsValid(CDGameState))
@@ -421,6 +419,90 @@ void ACDGameMode::UpdatePhaseTimer()
 		break;
 	}
 }
+
+void ACDGameMode::HandleCoreDestroyed()
+{
+	if (bGameOver)
+	{
+		return;
+	}
+
+	bGameOver = true;
+	bWaveFinishing = true;
+
+	GetWorldTimerManager().ClearTimer(
+		PhaseTimerHandle
+	);
+
+	if (IsValid(WaveSpawner))
+	{
+		WaveSpawner->StopSpawning();
+	}
+
+	ACDGameState* CDGameState =
+		GetGameState<ACDGameState>();
+
+	if (IsValid(CDGameState))
+	{
+		CDGameState->SetRemainingTime(0.0f);
+
+		CDGameState->SetGamePhase(
+			ECDGamePhase::GameOver
+		);
+	}
+
+	UE_LOG(
+		LogTemp,
+		Error,
+		TEXT(
+			"Game Over - Core has been destroyed"
+		)
+	);
+}
+
+void ACDGameMode::FindCore()
+{
+	AActor* FoundActor =
+		UGameplayStatics::GetActorOfClass(
+			this,
+			ACDCore::StaticClass()
+		);
+
+	CoreActor = Cast<ACDCore>(FoundActor);
+
+	if (!IsValid(CoreActor))
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT(
+				"GameMode could not find CDCore"
+			)
+		);
+
+		return;
+	}
+
+	CoreActor->OnCoreDestroyed.RemoveDynamic(
+		this,
+		&ACDGameMode::HandleCoreDestroyed
+	);
+
+	CoreActor->OnCoreDestroyed.AddDynamic(
+		this,
+		&ACDGameMode::HandleCoreDestroyed
+	);
+
+	UE_LOG(
+		LogTemp,
+		Display,
+		TEXT(
+			"GameMode found Core and bound event: %s"
+		),
+		*CoreActor->GetName()
+	);
+}
+
 
 void ACDGameMode::FindWaveSpawner()
 {
