@@ -110,7 +110,7 @@ void ACDEnemy::Tick(float DeltaTime)
 
 }
 
-void ACDEnemy::ApplyEnemyDamge(float DamageAmount)
+void ACDEnemy::ApplyEnemyDamage(float DamageAmount)
 {
 	if (DamageAmount <= 0.0f || bDead)
 	{
@@ -118,7 +118,7 @@ void ACDEnemy::ApplyEnemyDamge(float DamageAmount)
 	}
 
 	CurrentHealth = FMath::Clamp(
-		CurrentHealth = DamageAmount,
+		CurrentHealth - DamageAmount,
 		0.0f,
 		MaxHealth
 	);
