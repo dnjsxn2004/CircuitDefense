@@ -4,7 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
+#include "InputActionValue.h"
 #include "CDPlayerController.generated.h"
+
+class UInputAction;
+class UInputMappingContext;
 
 /**
  * 
@@ -16,5 +20,18 @@ class CIRCUITDEFENSE_API ACDPlayerController : public APlayerController
 
 public:
 	ACDPlayerController();
-	
+
+protected:
+	virtual void BeginPlay() override;
+	virtual void SetupInputComponent() override;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputMappingContext> CombatMappingContext;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> AttackAction;
+
+private:
+	void HandleAttack(const FInputActionValue& InputActionValue);
+
 };
