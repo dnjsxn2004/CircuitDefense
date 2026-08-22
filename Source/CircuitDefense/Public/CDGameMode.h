@@ -9,6 +9,8 @@
 
 class ACDEnemy;
 class ACDWaveSpawner;
+class ACDEnemySpawner;
+class ACDCore;
 /**
  * 
  */
@@ -56,6 +58,16 @@ private:
 
 	UPROPERTY()
 	TObjectPtr<ACDWaveSpawner> WaveSpawner;
+
+	UPROPERTY()
+	TObjectPtr<ACDCore> CoreActor;
+
+	bool bGameOver = false;
+
+	UFUNCTION()
+	void HandleCoreDestroyed();
+
+	void FindCore();
 
 	void FindWaveSpawner();
 
