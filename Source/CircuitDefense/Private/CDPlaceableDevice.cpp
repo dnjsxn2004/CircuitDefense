@@ -3,7 +3,7 @@
 
 #include "CDPlaceableDevice.h"
 
-#include "Components/SceneCaptureComponent.h"
+#include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 
 // Sets default values
