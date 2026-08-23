@@ -43,14 +43,14 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Device")
 	TObjectPtr<UStaticMeshComponent> DeviceMesh;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Placement", meta = (Clamp = "0"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Placement", meta = (ClampMin = "0"))
 	int32 InstallationCost = 10;
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Placement")
 	bool bInstalled = false;
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Placement")
-	bool bPlacementPreview;
+	bool bPlacementPreview = false;
 
 public:	
 	// Called every frame

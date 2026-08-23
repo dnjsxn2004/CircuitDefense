@@ -45,7 +45,7 @@ void ACDPlaceableDevice::CompletePlacement()
 	UE_LOG(
 		LogTemp,
 		Display,
-		TEXT("Device Placement completed -""Device: %s, Cost: %d"),
+		TEXT("Device Placement completed - Device: %s, Cost: %d"),
 		*GetName(),
 		InstallationCost
 	);
