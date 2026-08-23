@@ -9,6 +9,7 @@
 
 class UInputAction;
 class UInputMappingContext;
+class UCDHUDWidget;
 
 /**
  * 
@@ -33,6 +34,15 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat", meta = (ClampMin = "100.0"))
 	float AttackRange = 1000.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat", meta = (ClampMin = "0.0"))
+	float AttackDamage = 10.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UCDHUDWidget> HUDWidgetClass;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UCDHUDWidget> HUDWidget;
 
 private:
 	void HandleAttack(const FInputActionValue& InputActionValue);

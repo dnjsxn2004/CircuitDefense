@@ -112,7 +112,7 @@ void ACDEnemy::Tick(float DeltaTime)
 
 void ACDEnemy::ApplyEnemyDamage(float DamageAmount)
 {
-	if (DamageAmount <= 0.0f || bDead)
+	if (DamageAmount <= 0.0f || bDead||IsActorBeingDestroyed())
 	{
 		return;
 	}
@@ -131,18 +131,23 @@ void ACDEnemy::ApplyEnemyDamage(float DamageAmount)
 		MaxHealth
 	);
 
-	if (CurrentHealth <= 0.0f)
+	if (CurrentHealth > 0.0f)
 	{
-		bDead = true;
-
-		UE_LOG(
-			LogTemp,
-			Display,
-			TEXT("Enemy destroyed")
-		);
-
-		Destroy();
+		return;
 	}
+
+	bDead = true;
+
+	SetActorTickEnabled(false);
+	SetActorEnableCollision(false);
+
+	UE_LOG(
+		LogTemp,
+		Display,
+		TEXT("Enemy destroyed")
+	);
+
+	Destroy();
 }
 
 float ACDEnemy::GetHealthPercent() const

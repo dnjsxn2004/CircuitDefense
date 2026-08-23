@@ -12,6 +12,9 @@
 #include "DrawDebugHelpers.h"
 #include "Engine/World.h"
 #include "Components/PrimitiveComponent.h"
+#include "CDEnemy.h"
+#include "CDGameState.h"
+#include "CDHUDWidget.h"
 
 ACDPlayerController::ACDPlayerController()
 {
@@ -85,6 +88,48 @@ void ACDPlayerController::BeginPlay()
         Warning,
         TEXT("Combat input mapping context added")
     );
+
+    if (!IsValid(HUDWidgetClass))
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT("HUDWidgetClass is not assigned")
+        );
+        return;
+    }
+
+    HUDWidget = CreateWidget<UCDHUDWidget>(
+        this,
+        HUDWidgetClass
+    );
+
+    if (!IsValid(HUDWidget))
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT("Failed to create HUD widget")
+        );
+        return;
+    }
+    
+    HUDWidget->SetVisibility(
+        ESlateVisibility::Visible
+    );
+
+    HUDWidget->SetIsEnabled(true);
+
+    HUDWidget->AddToViewport(100);
+
+    UE_LOG(
+        LogTemp,
+        Warning,
+        TEXT(
+            "HUD widget added - Class: %s"
+        ),
+        *GetNameSafe(HUDWidget->GetClass())
+    );
 }
 
 void ACDPlayerController::SetupInputComponent()
@@ -134,8 +179,38 @@ void ACDPlayerController::SetupInputComponent()
     );
 }
 
-inline void ACDPlayerController::HandleAttack(const FInputActionValue& InputActionValue)
+void ACDPlayerController::HandleAttack(const FInputActionValue& InputActionValue)
 {
+    UWorld* World = GetWorld();
+
+    if (!IsValid(World))
+    {
+        return;
+    }
+
+    ACDGameState* CDGameState = World->GetGameState<ACDGameState>();
+
+    if (!IsValid(CDGameState))
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT("Attack block: CDGameState is invalid")
+        );
+        return;
+    }
+
+    if (CDGameState->CurrentPhase !=ECDGamePhase::Combat)
+    {
+        UE_LOG(
+            LogTemp,
+            Display,
+            TEXT("Attack block: Current phase is %d"),
+            static_cast<int32>(CDGameState->CurrentPhase)
+        );
+        return;
+    }
+
     UE_LOG(
         LogTemp,
         Display,
@@ -204,6 +279,7 @@ void ACDPlayerController::PerformAttackTrace()
     const FVector DebugEnd =
         bHit ? HitResult.ImpactPoint : TraceEnd;
 
+    /*
     DrawDebugLine(
         World,
         TraceStart,
@@ -214,6 +290,8 @@ void ACDPlayerController::PerformAttackTrace()
         0,
         2.0f
     );
+    */
+
 
     UE_LOG(
         LogTemp,
@@ -233,6 +311,7 @@ void ACDPlayerController::PerformAttackTrace()
         return;
     }
 
+    /*
     DrawDebugPoint(
         World,
         HitResult.ImpactPoint,
@@ -241,5 +320,55 @@ void ACDPlayerController::PerformAttackTrace()
         false,
         3.0f
     );
+    */
+
+    ACDEnemy* HitEnemy =
+        Cast<ACDEnemy>(
+            HitResult.GetActor()
+        );
+
+    if (!IsValid(HitEnemy))
+    {
+        UE_LOG(
+            LogTemp,
+            Display,
+            TEXT(
+                "Attack hit non-enemy actor: %s"
+            ),
+            *GetNameSafe(HitResult.GetActor())
+        );
+
+        return;
+    }
+
+    if (HitEnemy->IsActorBeingDestroyed())
+    {
+        UE_LOG(
+            LogTemp,
+            Display,
+            TEXT(
+                "Attack ignored: enemy is being destroyed"
+            )
+        );
+
+        return;
+    }
+
+    const FString HitEnemyName =
+        HitEnemy->GetName();
+
+    HitEnemy->ApplyEnemyDamage(
+        AttackDamage
+    );
+
+    UE_LOG(
+        LogTemp,
+        Warning,
+        TEXT(
+            "Player damaged enemy: %s, Damage: %.0f"
+        ),
+        *HitEnemyName,
+        AttackDamage
+        );
 }
 

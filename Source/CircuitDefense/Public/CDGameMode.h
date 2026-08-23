@@ -63,6 +63,7 @@ private:
 	TObjectPtr<ACDCore> CoreActor;
 
 	bool bGameOver = false;
+	bool bGameClear = false;
 
 	UFUNCTION()
 	void HandleCoreDestroyed();
