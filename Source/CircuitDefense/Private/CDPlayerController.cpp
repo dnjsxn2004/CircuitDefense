@@ -15,9 +15,13 @@
 #include "CDEnemy.h"
 #include "CDGameState.h"
 #include "CDHUDWidget.h"
+#include "CDPlaceableDevice.h"
+#include "Engine/OverlapResult.h"
 
 ACDPlayerController::ACDPlayerController()
 {
+    PrimaryActorTick.bCanEverTick = true;
+
 	bShowMouseCursor = false;
 	bEnableClickEvents = false;
 	bEnableMouseOverEvents = false;
@@ -132,6 +136,16 @@ void ACDPlayerController::BeginPlay()
     );
 }
 
+void ACDPlayerController::Tick(float DeltaSeconds)
+{
+    Super::Tick(DeltaSeconds);
+
+    if (IsValid(PlacementPreview))
+    {
+        UpdatePlacementPreview();
+    }
+}
+
 void ACDPlayerController::SetupInputComponent()
 {
     Super::SetupInputComponent();
@@ -165,17 +179,51 @@ void ACDPlayerController::SetupInputComponent()
         return;
     }
 
+    if (!IsValid(StartPlacementAction))
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT("StartPlacementAction is not assigned")
+        );
+        return;
+    }
+
+    if (!IsValid(CancelPlacementAction))
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT("CancelPlacementAction is not assigned")
+        );
+        return;
+    }
+
     EnhancedInputComponent->BindAction(
         AttackAction,
         ETriggerEvent::Started,
         this,
         &ACDPlayerController::HandleAttack
     );
+    
+    EnhancedInputComponent->BindAction(
+        StartPlacementAction,
+        ETriggerEvent::Started,
+        this,
+        &ACDPlayerController::HandleStartPlacement
+    );
+    
+    EnhancedInputComponent->BindAction(
+        CancelPlacementAction,
+        ETriggerEvent::Started,
+        this,
+        &ACDPlayerController::HandleCancelPlacement
+    );
 
     UE_LOG(
         LogTemp,
         Warning,
-        TEXT("AttackAction binding completed")
+        TEXT("Player input binding completed")
     );
 }
 
@@ -195,29 +243,117 @@ void ACDPlayerController::HandleAttack(const FInputActionValue& InputActionValue
         UE_LOG(
             LogTemp,
             Error,
-            TEXT("Attack block: CDGameState is invalid")
+            TEXT("Input blocked: CDGameState is invalid")
         );
         return;
     }
 
-    if (CDGameState->CurrentPhase !=ECDGamePhase::Combat)
+    switch (CDGameState->CurrentPhase)
+    {
+    case ECDGamePhase::Combat:
+        PerformAttackTrace();
+        break;
+
+    case ECDGamePhase::Preparation:
+        ConfirmPlacement();
+        break;
+
+    default:
+        UE_LOG(
+            LogTemp,
+            Display,
+            TEXT("Input blocked: Current phase is %d"),
+            static_cast<int32>(CDGameState->CurrentPhase)
+        );
+        break;
+    }
+}
+
+void ACDPlayerController::HandleStartPlacement(const FInputActionValue& InputActionValue)
+{
+    UWorld* World = GetWorld();
+
+    if (!IsValid(World))
+    {
+        return;
+    }
+
+    ACDGameState* CDGameState = World->GetGameState<ACDGameState>();
+
+    if (!IsValid(CDGameState))
+    {
+        return;
+    }
+
+    if (CDGameState->CurrentPhase != ECDGamePhase::Preparation)
     {
         UE_LOG(
             LogTemp,
             Display,
-            TEXT("Attack block: Current phase is %d"),
-            static_cast<int32>(CDGameState->CurrentPhase)
+            TEXT("Placement can only start during Prepartion")
         );
         return;
     }
 
+    if (IsValid(PlacementPreview))
+    {
+        UE_LOG(
+            LogTemp,
+            Display,
+            TEXT("Placement preview already exists")
+        );
+        return;
+    }
+
+    if (!IsValid(DefaultPlaceableDeviceClass))
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT("DefaultPlaceableDeviceCalss is not assigned")
+        );
+        return;
+    }
+
+    FActorSpawnParameters SpawnParameters;
+
+    SpawnParameters.Owner = this;
+    SpawnParameters.SpawnCollisionHandlingOverride =
+        ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+    PlacementPreview =
+        World->SpawnActor<ACDPlaceableDevice>(
+            DefaultPlaceableDeviceClass,
+            FVector::ZeroVector,
+            FRotator::ZeroRotator,
+            SpawnParameters
+        );
+
+    if (!IsValid(PlacementPreview))
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT("Failed to create placement preview")
+        );
+        return;
+    }
+
+    PlacementPreview->SetPlacementPreview(true);
+    bCanPlacePreview = false;
+    UpdatePlacementPreview();
+
     UE_LOG(
         LogTemp,
         Display,
-        TEXT("Player attack input")
+        TEXT("Placement preview created: %s"),
+        *GetNameSafe(PlacementPreview)
     );
+}
 
-    PerformAttackTrace();
+void ACDPlayerController::HandleCancelPlacement(const FInputActionValue& InputActionValue)
+{
+    CancelPlacement();
 }
 
 void ACDPlayerController::PerformAttackTrace()
@@ -372,3 +508,221 @@ void ACDPlayerController::PerformAttackTrace()
         );
 }
 
+void ACDPlayerController::UpdatePlacementPreview()
+{
+    if (!IsValid(PlacementPreview))
+    {
+        bCanPlacePreview = false;
+        return;
+    }
+
+    if (!IsValid(PlayerCameraManager))
+    {
+        bCanPlacePreview = false;
+        return;
+    }
+
+    UWorld* World = GetWorld();
+
+    if (!IsValid(World))
+    {
+        bCanPlacePreview = false;
+        return;
+    }
+
+    const FVector TraceStart = PlayerCameraManager->GetCameraLocation();
+
+    const FVector TraceDirection = PlayerCameraManager->GetCameraRotation().Vector();
+
+    const FVector TraceEnd = TraceStart + TraceDirection * PlacementTraceDistance;
+
+    FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(DevicePlacementTrace), false);
+
+    if (APawn* ControlledPawn = GetPawn())
+    {
+        QueryParams.AddIgnoredActor(ControlledPawn);
+    }
+    
+    QueryParams.AddIgnoredActor(PlacementPreview);
+
+    FHitResult HitResult;
+
+    const bool bHit =
+        World->LineTraceSingleByChannel(
+            HitResult,
+            TraceStart,
+            TraceEnd,
+            ECC_Visibility,
+            QueryParams
+        );
+
+    if (!bHit)
+    {
+        bCanPlacePreview = false;
+
+        PlacementPreview->SetActorHiddenInGame(true);
+        return;
+    }
+
+    PlacementPreview->SetActorHiddenInGame(false);
+
+    PlacementPreview->SetActorLocation(
+        HitResult.ImpactPoint
+    );
+
+    bCanPlacePreview =
+        IsPlacementLocationValid(HitResult);
+
+    DrawDebugBox(
+        World,
+        HitResult.ImpactPoint,
+        PlacementCheckExtent,
+        bCanPlacePreview
+        ? FColor::Green
+        : FColor::Red,
+        false,
+        0.0f,
+        0,
+        2.0f
+    );
+}
+
+void ACDPlayerController::ConfirmPlacement()
+{
+    if (!IsValid(PlacementPreview))
+    {
+        UE_LOG(
+            LogTemp,
+            Display,
+            TEXT("No placement preview to confirm")
+        );
+        return;
+    }
+
+    if (!bCanPlacePreview)
+    {
+        UE_LOG(
+            LogTemp,
+            Display,
+            TEXT("Current location cannot be used")
+        );
+        return;
+    }
+
+    PlacementPreview->SetActorHiddenInGame(false);
+    PlacementPreview->CompletePlacement();
+
+    UE_LOG(
+        LogTemp,
+        Display,
+        TEXT(
+            "Device placement confirmed: %s"
+        ),
+        *GetNameSafe(PlacementPreview)
+    );
+
+    PlacementPreview = nullptr;
+    bCanPlacePreview = false;
+}
+
+void ACDPlayerController::CancelPlacement()
+{
+    if (!IsValid(PlacementPreview))
+    {
+        return;
+    }
+
+    UE_LOG(
+        LogTemp,
+        Display,
+        TEXT(
+            "Device placement canceled: %s"
+        ),
+        *GetNameSafe(PlacementPreview)
+    );
+
+    PlacementPreview->Destroy();
+    PlacementPreview = nullptr;
+    bCanPlacePreview = false;
+}
+
+bool ACDPlayerController::IsPlacementLocationValid(const FHitResult& SurfaceHit) const
+{
+    UWorld* World = GetWorld();
+
+    if (!IsValid(World))
+    {
+        return false;
+    }
+
+    if (!IsValid(PlacementPreview))
+    {
+        return false;
+    }
+
+    if (
+        SurfaceHit.ImpactNormal.Z
+        < MinimumPlacementNormalZ
+        )
+    {
+        return false;
+    }
+
+    FCollisionObjectQueryParams ObjectQueryParams;
+
+    ObjectQueryParams.AddObjectTypesToQuery(
+        ECC_WorldStatic
+    );
+
+    ObjectQueryParams.AddObjectTypesToQuery(
+        ECC_WorldDynamic
+    );
+
+    FCollisionQueryParams QueryParams(
+        SCENE_QUERY_STAT(DevicePlacementOverlap),
+        false
+    );
+
+    QueryParams.AddIgnoredActor(PlacementPreview);
+
+    if (APawn* ControlledPawn = GetPawn())
+    {
+        QueryParams.AddIgnoredActor(ControlledPawn);
+    }
+
+    TArray<FOverlapResult> OverlapResults;
+
+    World->OverlapMultiByObjectType(
+        OverlapResults,
+        SurfaceHit.ImpactPoint,
+        FQuat::Identity,
+        ObjectQueryParams,
+        FCollisionShape::MakeBox(
+            PlacementCheckExtent
+        ),
+        QueryParams
+    );
+
+    for (const FOverlapResult& OverlapResult
+        : OverlapResults)
+    {
+        ACDPlaceableDevice* OtherDevice =
+            Cast<ACDPlaceableDevice>(
+                OverlapResult.GetActor()
+            );
+
+        if (!IsValid(OtherDevice))
+        {
+            continue;
+        }
+
+        if (OtherDevice == PlacementPreview)
+        {
+            continue;
+        }
+
+        return false;
+    }
+
+    return true;
+}
