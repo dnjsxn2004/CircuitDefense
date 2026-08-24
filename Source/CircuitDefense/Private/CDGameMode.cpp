@@ -114,7 +114,7 @@ void ACDGameMode::HandleSpawningCompleted()
 
 void ACDGameMode::TryFinishWave()
 {
-	if (bGameOver)
+	if (bGameOver || bGameClear)
 	{
 		return;
 	}
@@ -149,7 +149,7 @@ void ACDGameMode::TryFinishWave()
 
 void ACDGameMode::StartPreparation()
 {
-	if (bGameOver)
+	if (bGameOver || bGameClear)
 	{
 		return;
 	}
@@ -186,7 +186,7 @@ void ACDGameMode::StartPreparation()
 
 void ACDGameMode::StartCombat()
 {
-	if (bGameOver)
+	if (bGameOver || bGameClear)
 	{
 		return;
 	}
@@ -246,7 +246,7 @@ void ACDGameMode::StartCombat()
 
 void ACDGameMode::FinishWave()
 {
-	if (bGameOver)
+	if (bGameOver || bGameClear)
 	{
 		return;
 	}
@@ -297,7 +297,7 @@ void ACDGameMode::FinishWave()
 
 void ACDGameMode::StartNextWave()
 {
-	if (bGameOver)
+	if (bGameOver || bGameClear)
 	{
 		return;
 	}
@@ -316,6 +316,14 @@ void ACDGameMode::StartNextWave()
 
 void ACDGameMode::CompleteAllWaves()
 {
+	if (bGameClear||bGameOver)
+	{
+		return;
+	}
+
+	bGameClear = true;
+	bWaveFinishing = true;
+
 	GetWorldTimerManager().ClearTimer(PhaseTimerHandle);
 
 	if (IsValid(WaveSpawner))
@@ -323,14 +331,20 @@ void ACDGameMode::CompleteAllWaves()
 		WaveSpawner->StopSpawning();
 	}
 
-	ACDGameState* CDGameState = GetGameState<ACDGameState>();
+	ACDGameState* CDGameState =
+		GetGameState<ACDGameState>();
 
 	if (IsValid(CDGameState))
 	{
 		CDGameState->SetRemainingTime(0.0f);
+		CDGameState->SetGamePhase(ECDGamePhase::Victory);
 	}
 
-	UE_LOG(LogTemp, Display, TEXT("All Waves Clear!"));
+	UE_LOG(
+		LogTemp,
+		Display,
+		TEXT("All Waves Clear - Victory")
+	);
 }
 
 void ACDGameMode::StartPhaseTimer(float Duration)
