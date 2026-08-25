@@ -1,5 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
@@ -8,36 +6,105 @@
 #include "CDGameState.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
-	FOnGamePhaseChanged,
-	ECDGamePhase,
-	NewPhase
+    FOnGamePhaseChanged,
+    ECDGamePhase,
+    NewPhase
+);
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
+    FOnResourcesChanged,
+    int32,
+    NewResources
 );
 
 UCLASS()
-class CIRCUITDEFENSE_API ACDGameState : public AGameStateBase
+class CIRCUITDEFENSE_API ACDGameState
+    : public AGameStateBase
 {
-	GENERATED_BODY()
-	
+    GENERATED_BODY()
+
 public:
-	ACDGameState();
+    ACDGameState();
 
-	UPROPERTY(BlueprintReadOnly, Category = "Game Flow")
-	ECDGamePhase CurrentPhase = ECDGamePhase::Preparation;
+    UPROPERTY(
+        BlueprintReadOnly,
+        Category = "Game Flow"
+    )
+    ECDGamePhase CurrentPhase =
+        ECDGamePhase::Preparation;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Wave")
-	int32 CurrentWave = 0;
-	
-	UPROPERTY(BlueprintReadOnly, Category = "Game Flow")
-	FOnGamePhaseChanged OnGamePhaseChanged;
+    UPROPERTY(
+        BlueprintReadOnly,
+        Category = "Wave"
+    )
+    int32 CurrentWave = 0;
 
-	UFUNCTION(BlueprintCallable, Category = "Game State")
-	void SetGamePhase(ECDGamePhase NewPhase);
+    UPROPERTY(
+        BlueprintReadOnly,
+        Category = "Game State"
+    )
+    float RemainingTime = 0.0f;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Game State")
-	float RemainingTime = 0.0f;
+    UPROPERTY(
+        BlueprintReadOnly,
+        Category = "Game Flow"
+    )
+    FOnGamePhaseChanged OnGamePhaseChanged;
 
-	void SetCurrentWave(int32 NewWave);
-	void SetRemainingTime(float NewTime);
+    UPROPERTY(
+        EditDefaultsOnly,
+        BlueprintReadOnly,
+        Category = "Resources",
+        meta = (ClampMin = "0")
+    )
+    int32 StartingResources = 100;
 
+    UPROPERTY(
+        VisibleInstanceOnly,
+        BlueprintReadOnly,
+        Category = "Resources"
+    )
+    int32 CurrentResources = 0;
 
+    UPROPERTY(
+        BlueprintAssignable,
+        Category = "Resources"
+    )
+    FOnResourcesChanged OnResourcesChanged;
+
+    UFUNCTION(
+        BlueprintCallable,
+        Category = "Game State"
+    )
+    void SetGamePhase(ECDGamePhase NewPhase);
+
+    UFUNCTION(
+        BlueprintPure,
+        Category = "Resources"
+    )
+    bool CanAfford(int32 Cost) const;
+
+    UFUNCTION(
+        BlueprintCallable,
+        Category = "Resources"
+    )
+    bool SpendResources(int32 Amount);
+
+    UFUNCTION(
+        BlueprintCallable,
+        Category = "Resources"
+    )
+    void AddResources(int32 Amount);
+
+    UFUNCTION(
+        BlueprintPure,
+        Category = "Resources"
+    )
+    int32 GetCurrentResources() const;
+
+    void SetCurrentWave(int32 NewWave);
+    void SetRemainingTime(float NewTime);
+
+protected:
+    virtual void BeginPlay() override;
 };

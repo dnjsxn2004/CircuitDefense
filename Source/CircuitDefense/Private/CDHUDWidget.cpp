@@ -9,10 +9,35 @@
 #include "Components/TextBlock.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
+#include "CDGameMode.h"
+#include "Components/Button.h"
 
 void UCDHUDWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+
+	if (IsValid(StartWaveButton))
+	{
+		StartWaveButton->OnClicked.RemoveDynamic(
+			this,
+			&UCDHUDWidget::HandleStartWaveClicked
+		);
+
+		StartWaveButton->OnClicked.AddDynamic(
+			this,
+			&UCDHUDWidget::HandleStartWaveClicked
+		);
+	}
+	else
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT(
+				"StartWaveButton is not bound"
+			)
+		);
+	}
 
 	AActor* FoundCore =
 		UGameplayStatics::GetActorOfClass(
@@ -58,6 +83,23 @@ void UCDHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 	if (!IsValid(CDGameState))
 	{
 		return;
+	}
+
+	if (IsValid(StartWaveButton))
+	{
+		const bool bCanStartWave =
+			CDGameState->CurrentPhase
+			== ECDGamePhase::Preparation;
+
+		StartWaveButton->SetVisibility(
+			bCanStartWave
+			? ESlateVisibility::Visible
+			: ESlateVisibility::Collapsed
+		);
+
+		StartWaveButton->SetIsEnabled(
+			bCanStartWave
+		);
 	}
 
 	FString PhaseName;
@@ -160,3 +202,32 @@ void UCDHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 	}
 }
 
+void UCDHUDWidget::HandleStartWaveClicked()
+{
+	UWorld* World = GetWorld();
+
+	if (!IsValid(World))
+	{
+		return;
+	}
+
+	ACDGameMode* CDGameMode =
+		Cast<ACDGameMode>(
+			UGameplayStatics::GetGameMode(this)
+		);
+
+	if (!IsValid(CDGameMode))
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT(
+				"Start wave failed: "
+				"CDGameMode is invalid"
+			)
+		);
+		return;
+	}
+
+	CDGameMode->RequestStartWave();
+}

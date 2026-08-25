@@ -168,8 +168,6 @@ void ACDGameMode::StartPreparation()
 		return;
 	}
 
-	const FCDWaveConfig& CurrentConfig = WaveConfig[ActiveWaveIndex];
-
 	CDGameState->SetCurrentWave(ActiveWaveIndex + 1);
 	CDGameState->SetGamePhase(ECDGamePhase::Preparation);
 
@@ -180,7 +178,21 @@ void ACDGameMode::StartPreparation()
 		ActiveWaveIndex + 1
 	);
 
-	StartPhaseTimer(CurrentConfig.PreparationTime);
+	GetWorldTimerManager().ClearTimer(
+		PhaseTimerHandle
+	);
+
+	CDGameState->SetRemainingTime(0.0f);
+
+	UE_LOG(
+		LogTemp,
+		Display,
+		TEXT(
+			"Wave %d is waiting for "
+			"manual start"
+		),
+		ActiveWaveIndex + 1
+	);
 
 }
 
@@ -517,7 +529,6 @@ void ACDGameMode::FindCore()
 	);
 }
 
-
 void ACDGameMode::FindWaveSpawner()
 {
 	AActor* FoundActor =
@@ -570,4 +581,60 @@ void ACDGameMode::FindWaveSpawner()
 		),
 		*WaveSpawner->GetName()
 	);
+}
+
+void ACDGameMode::RequestStartWave()
+{
+	if (bGameOver || bGameClear)
+	{
+		return;
+	}
+
+	if (!WaveConfig.IsValidIndex(ActiveWaveIndex))
+	{
+		return;
+	}
+
+	ACDGameState* CDGameState =
+		GetGameState<ACDGameState>();
+
+	if (!IsValid(CDGameState))
+	{
+		return;
+	}
+
+	if (
+		CDGameState->CurrentPhase
+		!= ECDGamePhase::Preparation
+		)
+	{
+		UE_LOG(
+			LogTemp,
+			Display,
+			TEXT(
+				"Start wave request ignored - "
+				"Current phase: %d"
+			),
+			static_cast<int32>(
+				CDGameState->CurrentPhase
+				)
+		);
+		return;
+	}
+
+	GetWorldTimerManager().ClearTimer(
+		PhaseTimerHandle
+	);
+
+	UE_LOG(
+		LogTemp,
+		Display,
+		TEXT(
+			"Manual wave start requested - "
+			"Wave: %d"
+		),
+		ActiveWaveIndex + 1
+	);
+
+	StartCombat();
 }

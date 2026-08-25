@@ -4,10 +4,19 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "CDDeviceType.h"
 #include "CDPlaceableDevice.generated.h"
 
+class UMaterialInstanceDynamic;
+class UMaterialInterface;
 class USceneComponent;
 class UStaticMeshComponent;
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
+	FOnDevicePowerChanged,
+	bool,
+	bNewPowered
+);
 
 UCLASS()
 class CIRCUITDEFENSE_API ACDPlaceableDevice : public AActor
@@ -33,9 +42,34 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Placement")
 	bool IsPlacementPreview() const;
 
+	UFUNCTION(BlueprintCallable, Category = "Placement")
+	void SetPlacementValid(bool bIsValid);
+
+	UFUNCTION(
+		BlueprintPure,
+		Category = "Placement"
+	)
+	int32 GetRefundAmount() const;
+
+	UFUNCTION(BlueprintPure, Category = "Circuit")
+	ECDDeviceType GetDeviceType() const;
+
+	UFUNCTION(BlueprintPure, Category = "Circuit")
+	bool IsPowered() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Circuit")
+	void SetPowered(bool bNewPowered);
+
+	UFUNCTION(BlueprintPure, Category = "Circuit")
+	float GetConnectionRange() const;
+
+	UPROPERTY(
+		BlueprintAssignable,
+		Category = "Circuit"
+	)
+	FOnDevicePowerChanged OnDevicePowerChanged;
+
 protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Device")
 	TObjectPtr<USceneComponent> SceneRoot;
@@ -52,8 +86,52 @@ protected:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Placement")
 	bool bPlacementPreview = false;
 
-public:	
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category ="Placement|Preview")
+	TObjectPtr<UMaterialInterface> PreviewMaterialBase;
+
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Placement|Preview")
+	TObjectPtr<UMaterialInstanceDynamic> PreviewDynamicMaterial;
+
+	UPROPERTY(Transient)
+	TArray <TObjectPtr< UMaterialInterface>> OriginalMaterials;
+
+	UPROPERTY(
+		EditDefaultsOnly,
+		BlueprintReadOnly,
+		Category = "Placement",
+		meta = (
+			ClampMin = "0.0",
+			ClampMax = "1.0"
+			)
+	)
+	float RefundRate = 0.5f;
+
+	UPROPERTY(
+		EditDefaultsOnly,
+		BlueprintReadOnly,
+		Category = "Circuit"
+	)
+	ECDDeviceType DeviceType =
+		ECDDeviceType::Relay;
+
+	UPROPERTY(
+		EditDefaultsOnly,
+		BlueprintReadOnly,
+		Category = "Circuit",
+		meta = (ClampMin = "0.0")
+	)
+	float ConnectionRange = 500.0f;
+
+	UPROPERTY(
+		VisibleInstanceOnly,
+		BlueprintReadOnly,
+		Category = "Circuit"
+	)
+	bool bPowered = false;
+
+private:
+	void ApplyPreviewMaterial();
+	void RestoreOriginalMaterials();
+
 
 };

@@ -9,6 +9,7 @@
 class ACDCore;
 class UProgressBar;
 class UTextBlock;
+class UButton;
 
 UCLASS()
 class CIRCUITDEFENSE_API UCDHUDWidget : public UUserWidget
@@ -41,6 +42,11 @@ protected:
 	UPROPERTY()
 	TObjectPtr<ACDCore> CoreActor;
 
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UButton> StartWaveButton;
 
-	
+private:
+	UFUNCTION()
+	void HandleStartWaveClicked();
+
 };

@@ -9,7 +9,6 @@
 #include "InputActionValue.h"
 #include "InputMappingContext.h"
 #include "Camera/PlayerCameraManager.h"
-#include "DrawDebugHelpers.h"
 #include "Engine/World.h"
 #include "Components/PrimitiveComponent.h"
 #include "CDEnemy.h"
@@ -17,6 +16,8 @@
 #include "CDHUDWidget.h"
 #include "CDPlaceableDevice.h"
 #include "Engine/OverlapResult.h"
+#include "CDCircuitManager.h"
+#include "Kismet/GameplayStatics.h"
 
 ACDPlayerController::ACDPlayerController()
 {
@@ -93,6 +94,34 @@ void ACDPlayerController::BeginPlay()
         TEXT("Combat input mapping context added")
     );
 
+    CircuitManager =
+        Cast<ACDCircuitManager>(
+            UGameplayStatics::GetActorOfClass(
+                this,
+                ACDCircuitManager::StaticClass()
+            )
+        );
+
+    if (!IsValid(CircuitManager))
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT(
+                "CDCircuitManager was not found "
+                "in the level"
+            )
+        );
+    }
+    else
+    {
+        UE_LOG(
+            LogTemp,
+            Display,
+            TEXT("CDCircuitManager found")
+        );
+    }
+
     if (!IsValid(HUDWidgetClass))
     {
         UE_LOG(
@@ -126,6 +155,26 @@ void ACDPlayerController::BeginPlay()
 
     HUDWidget->AddToViewport(100);
 
+    ACDGameState* CDGameState =
+        GetWorld()->GetGameState<ACDGameState>();
+
+    if (IsValid(CDGameState))
+    {
+        CDGameState->OnGamePhaseChanged.RemoveDynamic(
+            this,
+            &ACDPlayerController::HandleGamePhaseChanged
+        );
+
+        CDGameState->OnGamePhaseChanged.AddDynamic(
+            this,
+            &ACDPlayerController::HandleGamePhaseChanged
+        );
+
+        HandleGamePhaseChanged(
+            CDGameState->CurrentPhase
+        );
+    }
+
     UE_LOG(
         LogTemp,
         Warning,
@@ -144,87 +193,6 @@ void ACDPlayerController::Tick(float DeltaSeconds)
     {
         UpdatePlacementPreview();
     }
-}
-
-void ACDPlayerController::SetupInputComponent()
-{
-    Super::SetupInputComponent();
-
-    UE_LOG(
-        LogTemp,
-        Warning,
-        TEXT("CDPlayerController SetupInputComponent called")
-    );
-
-    UEnhancedInputComponent* EnhancedInputComponent =
-        Cast<UEnhancedInputComponent>(InputComponent);
-
-    if (!IsValid(EnhancedInputComponent))
-    {
-        UE_LOG(
-            LogTemp,
-            Error,
-            TEXT("InputComponent is not EnhancedInputComponent")
-        );
-        return;
-    }
-
-    if (!IsValid(AttackAction))
-    {
-        UE_LOG(
-            LogTemp,
-            Error,
-            TEXT("AttackAction is not assigned")
-        );
-        return;
-    }
-
-    if (!IsValid(StartPlacementAction))
-    {
-        UE_LOG(
-            LogTemp,
-            Error,
-            TEXT("StartPlacementAction is not assigned")
-        );
-        return;
-    }
-
-    if (!IsValid(CancelPlacementAction))
-    {
-        UE_LOG(
-            LogTemp,
-            Error,
-            TEXT("CancelPlacementAction is not assigned")
-        );
-        return;
-    }
-
-    EnhancedInputComponent->BindAction(
-        AttackAction,
-        ETriggerEvent::Started,
-        this,
-        &ACDPlayerController::HandleAttack
-    );
-    
-    EnhancedInputComponent->BindAction(
-        StartPlacementAction,
-        ETriggerEvent::Started,
-        this,
-        &ACDPlayerController::HandleStartPlacement
-    );
-    
-    EnhancedInputComponent->BindAction(
-        CancelPlacementAction,
-        ETriggerEvent::Started,
-        this,
-        &ACDPlayerController::HandleCancelPlacement
-    );
-
-    UE_LOG(
-        LogTemp,
-        Warning,
-        TEXT("Player input binding completed")
-    );
 }
 
 void ACDPlayerController::HandleAttack(const FInputActionValue& InputActionValue)
@@ -269,86 +237,25 @@ void ACDPlayerController::HandleAttack(const FInputActionValue& InputActionValue
     }
 }
 
-void ACDPlayerController::HandleStartPlacement(const FInputActionValue& InputActionValue)
+void ACDPlayerController::HandleSelectPowerSource(
+    const FInputActionValue& InputActionValue
+)
 {
-    UWorld* World = GetWorld();
+    StartPlacement(PowerSourceDeviceClass);
+}
 
-    if (!IsValid(World))
-    {
-        return;
-    }
+void ACDPlayerController::HandleSelectRelay(
+    const FInputActionValue& InputActionValue
+)
+{
+    StartPlacement(RelayDeviceClass);
+}
 
-    ACDGameState* CDGameState = World->GetGameState<ACDGameState>();
-
-    if (!IsValid(CDGameState))
-    {
-        return;
-    }
-
-    if (CDGameState->CurrentPhase != ECDGamePhase::Preparation)
-    {
-        UE_LOG(
-            LogTemp,
-            Display,
-            TEXT("Placement can only start during Prepartion")
-        );
-        return;
-    }
-
-    if (IsValid(PlacementPreview))
-    {
-        UE_LOG(
-            LogTemp,
-            Display,
-            TEXT("Placement preview already exists")
-        );
-        return;
-    }
-
-    if (!IsValid(DefaultPlaceableDeviceClass))
-    {
-        UE_LOG(
-            LogTemp,
-            Error,
-            TEXT("DefaultPlaceableDeviceCalss is not assigned")
-        );
-        return;
-    }
-
-    FActorSpawnParameters SpawnParameters;
-
-    SpawnParameters.Owner = this;
-    SpawnParameters.SpawnCollisionHandlingOverride =
-        ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
-    PlacementPreview =
-        World->SpawnActor<ACDPlaceableDevice>(
-            DefaultPlaceableDeviceClass,
-            FVector::ZeroVector,
-            FRotator::ZeroRotator,
-            SpawnParameters
-        );
-
-    if (!IsValid(PlacementPreview))
-    {
-        UE_LOG(
-            LogTemp,
-            Error,
-            TEXT("Failed to create placement preview")
-        );
-        return;
-    }
-
-    PlacementPreview->SetPlacementPreview(true);
-    bCanPlacePreview = false;
-    UpdatePlacementPreview();
-
-    UE_LOG(
-        LogTemp,
-        Display,
-        TEXT("Placement preview created: %s"),
-        *GetNameSafe(PlacementPreview)
-    );
+void ACDPlayerController::HandleSelectAttackDevice(
+    const FInputActionValue& InputActionValue
+)
+{
+    StartPlacement(AttackDeviceClass);
 }
 
 void ACDPlayerController::HandleCancelPlacement(const FInputActionValue& InputActionValue)
@@ -516,12 +423,6 @@ void ACDPlayerController::UpdatePlacementPreview()
         return;
     }
 
-    if (!IsValid(PlayerCameraManager))
-    {
-        bCanPlacePreview = false;
-        return;
-    }
-
     UWorld* World = GetWorld();
 
     if (!IsValid(World))
@@ -530,10 +431,22 @@ void ACDPlayerController::UpdatePlacementPreview()
         return;
     }
 
-    const FVector TraceStart = PlayerCameraManager->GetCameraLocation();
+    FVector TraceStart;
+    FVector TraceDirection;
 
-    const FVector TraceDirection = PlayerCameraManager->GetCameraRotation().Vector();
+    const bool bDeprojected =
+        DeprojectMousePositionToWorld(
+            TraceStart,
+            TraceDirection
+        );
 
+    if (!bDeprojected)
+    {
+        bCanPlacePreview = false;
+
+        PlacementPreview->SetActorHiddenInGame(true);
+        return;
+    }
     const FVector TraceEnd = TraceStart + TraceDirection * PlacementTraceDistance;
 
     FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(DevicePlacementTrace), false);
@@ -573,18 +486,7 @@ void ACDPlayerController::UpdatePlacementPreview()
     bCanPlacePreview =
         IsPlacementLocationValid(HitResult);
 
-    DrawDebugBox(
-        World,
-        HitResult.ImpactPoint,
-        PlacementCheckExtent,
-        bCanPlacePreview
-        ? FColor::Green
-        : FColor::Red,
-        false,
-        0.0f,
-        0,
-        2.0f
-    );
+    PlacementPreview->SetPlacementValid(bCanPlacePreview);
 }
 
 void ACDPlayerController::ConfirmPlacement()
@@ -609,16 +511,59 @@ void ACDPlayerController::ConfirmPlacement()
         return;
     }
 
+    UWorld* World = GetWorld();
+
+    if (!IsValid(World))
+    {
+        return;
+    }
+
+    ACDGameState* CDGameState =
+        World->GetGameState<ACDGameState>();
+
+    if (!IsValid(CDGameState))
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT(
+                "Placement failed: "
+                "CDGameState is invalid"
+            )
+        );
+        return;
+    }
+
+    const int32 InstallationCost =
+        PlacementPreview->GetInstallationCost();
+
+    if (
+        !CDGameState->SpendResources(
+            InstallationCost
+        )
+        )
+    {
+        return;
+    }
+
     PlacementPreview->SetActorHiddenInGame(false);
     PlacementPreview->CompletePlacement();
+
+    if (IsValid(CircuitManager))
+    {
+        CircuitManager->RefreshCircuit();
+    }
 
     UE_LOG(
         LogTemp,
         Display,
         TEXT(
-            "Device placement confirmed: %s"
+            "Device placement confirmed - "
+            "Device: %s, Cost: %d, Remaining: %d"
         ),
-        *GetNameSafe(PlacementPreview)
+        *GetNameSafe(PlacementPreview),
+        InstallationCost,
+        CDGameState->GetCurrentResources()
     );
 
     PlacementPreview = nullptr;
@@ -664,6 +609,22 @@ bool ACDPlayerController::IsPlacementLocationValid(const FHitResult& SurfaceHit)
         SurfaceHit.ImpactNormal.Z
         < MinimumPlacementNormalZ
         )
+    {
+        return false;
+    }
+
+    const ACDGameState* CDGameState =
+        World->GetGameState<ACDGameState>();
+
+    if (!IsValid(CDGameState))
+    {
+        return false;
+    }
+
+    const int32 InstallationCost =
+        PlacementPreview->GetInstallationCost();
+
+    if (!CDGameState->CanAfford(InstallationCost))
     {
         return false;
     }
@@ -725,4 +686,473 @@ bool ACDPlayerController::IsPlacementLocationValid(const FHitResult& SurfaceHit)
     }
 
     return true;
+}
+
+void ACDPlayerController::HandleRemoveDevice(
+    const FInputActionValue& InputActionValue
+)
+{
+    UWorld* World = GetWorld();
+
+    if (!IsValid(World))
+    {
+        return;
+    }
+
+    ACDGameState* CDGameState =
+        World->GetGameState<ACDGameState>();
+
+    if (!IsValid(CDGameState))
+    {
+        return;
+    }
+
+    if (
+        CDGameState->CurrentPhase
+        != ECDGamePhase::Preparation
+        )
+    {
+        UE_LOG(
+            LogTemp,
+            Display,
+            TEXT(
+                "Devices can only be removed "
+                "during Preparation"
+            )
+        );
+        return;
+    }
+
+    if (IsValid(PlacementPreview))
+    {
+        UE_LOG(
+            LogTemp,
+            Display,
+            TEXT(
+                "Cancel the placement preview "
+                "before removing a device"
+            )
+        );
+        return;
+    }
+
+    TryRemoveDevice();
+}
+
+void ACDPlayerController::TryRemoveDevice()
+{
+    if (!IsValid(PlayerCameraManager))
+    {
+        return;
+    }
+
+    UWorld* World = GetWorld();
+
+    if (!IsValid(World))
+    {
+        return;
+    }
+
+    ACDGameState* CDGameState =
+        World->GetGameState<ACDGameState>();
+
+    if (!IsValid(CDGameState))
+    {
+        return;
+    }
+
+    const FVector TraceStart =
+        PlayerCameraManager->GetCameraLocation();
+
+    const FVector TraceDirection =
+        PlayerCameraManager
+        ->GetCameraRotation()
+        .Vector();
+
+    const FVector TraceEnd =
+        TraceStart
+        + TraceDirection * PlacementTraceDistance;
+
+    FCollisionQueryParams QueryParams(
+        SCENE_QUERY_STAT(DeviceRemovalTrace),
+        false
+    );
+
+    if (APawn* ControlledPawn = GetPawn())
+    {
+        QueryParams.AddIgnoredActor(ControlledPawn);
+    }
+
+    FHitResult HitResult;
+
+    const bool bHit =
+        World->LineTraceSingleByChannel(
+            HitResult,
+            TraceStart,
+            TraceEnd,
+            ECC_Visibility,
+            QueryParams
+        );
+
+    if (!bHit)
+    {
+        UE_LOG(
+            LogTemp,
+            Display,
+            TEXT("Device removal trace missed")
+        );
+        return;
+    }
+
+    ACDPlaceableDevice* HitDevice =
+        Cast<ACDPlaceableDevice>(
+            HitResult.GetActor()
+        );
+
+    if (!IsValid(HitDevice))
+    {
+        UE_LOG(
+            LogTemp,
+            Display,
+            TEXT(
+                "Removal target is not a device: %s"
+            ),
+            *GetNameSafe(HitResult.GetActor())
+        );
+        return;
+    }
+
+    if (!HitDevice->IsInstalled())
+    {
+        UE_LOG(
+            LogTemp,
+            Display,
+            TEXT(
+                "Removal target is not installed"
+            )
+        );
+        return;
+    }
+
+    const int32 RefundAmount =
+        HitDevice->GetRefundAmount();
+
+    const FString DeviceName =
+        HitDevice->GetName();
+
+    const bool bDestroyed =
+        HitDevice->Destroy();
+
+    if (!bDestroyed)
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT(
+                "Failed to remove device: %s"
+            ),
+            *DeviceName
+        );
+        return;
+    }
+
+    CDGameState->AddResources(RefundAmount);
+
+    if (IsValid(CircuitManager))
+    {
+        CircuitManager->RefreshCircuit();
+    }
+
+    UE_LOG(
+        LogTemp,
+        Display,
+        TEXT(
+            "Device removed - "
+            "Device: %s, Refund: %d, "
+            "Resources: %d"
+        ),
+        *DeviceName,
+        RefundAmount,
+        CDGameState->GetCurrentResources()
+    );
+}
+
+void ACDPlayerController::SetupInputComponent()
+{
+    Super::SetupInputComponent();
+
+    UEnhancedInputComponent* EnhancedInputComponent =
+        Cast<UEnhancedInputComponent>(InputComponent);
+
+    if (!IsValid(EnhancedInputComponent))
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT(
+                "InputComponent is not "
+                "EnhancedInputComponent"
+            )
+        );
+        return;
+    }
+
+    if (!IsValid(AttackAction))
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT("AttackAction is not assigned")
+        );
+        return;
+    }
+
+    if (!IsValid(SelectPowerSourceAction))
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT(
+                "SelectPowerSourceAction is not assigned"
+            )
+        );
+        return;
+    }
+
+    if (!IsValid(SelectRelayAction))
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT(
+                "SelectRelayAction is not assigned"
+            )
+        );
+        return;
+    }
+
+    if (!IsValid(SelectAttackDeviceAction))
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT(
+                "SelectAttackDeviceAction is not assigned"
+            )
+        );
+        return;
+    }
+
+    if (!IsValid(CancelPlacementAction))
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT(
+                "CancelPlacementAction is not assigned"
+            )
+        );
+        return;
+    }
+
+    if (!IsValid(RemoveDeviceAction))
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT(
+                "RemoveDeviceAction is not assigned"
+            )
+        );
+        return;
+    }
+
+    EnhancedInputComponent->BindAction(
+        AttackAction,
+        ETriggerEvent::Started,
+        this,
+        &ACDPlayerController::HandleAttack
+    );
+
+    EnhancedInputComponent->BindAction(
+        SelectPowerSourceAction,
+        ETriggerEvent::Started,
+        this,
+        &ACDPlayerController::HandleSelectPowerSource
+    );
+
+    EnhancedInputComponent->BindAction(
+        SelectRelayAction,
+        ETriggerEvent::Started,
+        this,
+        &ACDPlayerController::HandleSelectRelay
+    );
+
+    EnhancedInputComponent->BindAction(
+        SelectAttackDeviceAction,
+        ETriggerEvent::Started,
+        this,
+        &ACDPlayerController::HandleSelectAttackDevice
+    );
+
+    EnhancedInputComponent->BindAction(
+        CancelPlacementAction,
+        ETriggerEvent::Started,
+        this,
+        &ACDPlayerController::HandleCancelPlacement
+    );
+
+    EnhancedInputComponent->BindAction(
+        RemoveDeviceAction,
+        ETriggerEvent::Started,
+        this,
+        &ACDPlayerController::HandleRemoveDevice
+    );
+
+    UE_LOG(
+        LogTemp,
+        Warning,
+        TEXT("Player input binding completed")
+    );
+}
+
+void ACDPlayerController::StartPlacement(
+    TSubclassOf<ACDPlaceableDevice> DeviceClass
+)
+{
+    UWorld* World = GetWorld();
+
+    if (!IsValid(World))
+    {
+        return;
+    }
+
+    ACDGameState* CDGameState =
+        World->GetGameState<ACDGameState>();
+
+    if (!IsValid(CDGameState))
+    {
+        return;
+    }
+
+    if (
+        CDGameState->CurrentPhase
+        != ECDGamePhase::Preparation
+        )
+    {
+        UE_LOG(
+            LogTemp,
+            Display,
+            TEXT(
+                "Placement can only start "
+                "during Preparation"
+            )
+        );
+        return;
+    }
+
+    if (!DeviceClass)
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT(
+                "Selected device class "
+                "is not assigned"
+            )
+        );
+        return;
+    }
+
+    if (IsValid(PlacementPreview))
+    {
+        CancelPlacement();
+    }
+
+    FActorSpawnParameters SpawnParameters;
+
+    SpawnParameters.Owner = this;
+
+    SpawnParameters.SpawnCollisionHandlingOverride =
+        ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+    PlacementPreview =
+        World->SpawnActor<ACDPlaceableDevice>(
+            DeviceClass,
+            FVector::ZeroVector,
+            FRotator::ZeroRotator,
+            SpawnParameters
+        );
+
+    if (!IsValid(PlacementPreview))
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT(
+                "Failed to create placement preview"
+            )
+        );
+        return;
+    }
+
+    PlacementPreview->SetPlacementPreview(true);
+
+    bCanPlacePreview = false;
+
+    UpdatePlacementPreview();
+
+    UE_LOG(
+        LogTemp,
+        Display,
+        TEXT(
+            "Placement preview created - "
+            "Class: %s, Cost: %d"
+        ),
+        *GetNameSafe(DeviceClass.Get()),
+        PlacementPreview->GetInstallationCost()
+    );
+}
+
+void ACDPlayerController::HandleGamePhaseChanged(
+    ECDGamePhase NewPhase
+)
+{
+    if (NewPhase == ECDGamePhase::Preparation)
+    {
+        FInputModeGameAndUI InputMode;
+
+        if (IsValid(HUDWidget))
+        {
+            InputMode.SetWidgetToFocus(
+                HUDWidget->TakeWidget()
+            );
+        }
+
+        InputMode.SetLockMouseToViewportBehavior(
+            EMouseLockMode::DoNotLock
+        );
+
+        InputMode.SetHideCursorDuringCapture(false);
+
+        SetInputMode(InputMode);
+
+        bShowMouseCursor = true;
+        bEnableClickEvents = true;
+        bEnableMouseOverEvents = true;
+
+        return;
+    }
+
+    if (IsValid(PlacementPreview))
+    {
+        CancelPlacement();
+    }
+
+    FInputModeGameOnly InputMode;
+    SetInputMode(InputMode);
+
+    bShowMouseCursor = false;
+    bEnableClickEvents = false;
+    bEnableMouseOverEvents = false;
 }

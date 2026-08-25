@@ -22,6 +22,12 @@ class CIRCUITDEFENSE_API ACDGameMode : public AGameModeBase
 public :
 	ACDGameMode();
 
+	UFUNCTION(
+		BlueprintCallable,
+		Category = "Wave"
+	)
+	void RequestStartWave();
+
 protected:
 	virtual void BeginPlay() override;
 
