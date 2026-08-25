@@ -46,13 +46,6 @@ protected:
         BlueprintReadOnly,
         Category = "Input"
     )
-    TSubclassOf<ACDPlaceableDevice> DefaultPlaceableDeviceClass;
-
-    UPROPERTY(
-        EditDefaultsOnly,
-        BlueprintReadOnly,
-        Category = "Input"
-    )
     TObjectPtr<UInputAction> CancelPlacementAction;
 
     UPROPERTY(

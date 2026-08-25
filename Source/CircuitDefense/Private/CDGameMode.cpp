@@ -448,7 +448,7 @@ void ACDGameMode::UpdatePhaseTimer()
 
 void ACDGameMode::HandleCoreDestroyed()
 {
-	if (bGameOver)
+	if (bGameOver||bGameClear)
 	{
 		return;
 	}
