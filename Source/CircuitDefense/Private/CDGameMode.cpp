@@ -12,29 +12,11 @@
 
 ACDGameMode::ACDGameMode()
 {
-	GameStateClass = ACDGameState::StaticClass();
-	PlayerControllerClass = ACDPlayerController::StaticClass();
+	GameStateClass = 
+		ACDGameState::StaticClass();
 
-	FCDWaveConfig Wave1;
-	Wave1.PreparationTime = 3.0f;
-	Wave1.CombatTime = 10.0f;
-	Wave1.SpawnCount = 5;
-	Wave1.SpawnInterval = 2.0f;
-	WaveConfig.Add(Wave1);
-	
-	FCDWaveConfig Wave2;
-	Wave2.PreparationTime = 3.0f;
-	Wave2.CombatTime = 14.0f;
-	Wave2.SpawnCount = 8;
-	Wave2.SpawnInterval = 1.5f;
-	WaveConfig.Add(Wave2);
-	
-	FCDWaveConfig Wave3;
-	Wave3.PreparationTime = 3.0f;
-	Wave3.CombatTime = 15.0f;
-	Wave3.SpawnCount = 12;
-	Wave3.SpawnInterval = 1.0f;
-	WaveConfig.Add(Wave3);
+	PlayerControllerClass = 
+		ACDPlayerController::StaticClass();
 
 }
 
@@ -44,10 +26,56 @@ void ACDGameMode::BeginPlay()
 
 	ActiveWaveIndex = 0;
 
+	if (WaveConfig.Num() == 0)
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT(
+				"WaveConfig is empty - "
+				"Configure waves in BP_CDGameMode"
+			)
+		);
+
+		return;
+	}
+
+	for (
+		int32 WaveIndex = 0;
+		WaveIndex < WaveConfig.Num();
+		++WaveIndex
+		)
+	{
+		const FCDWaveConfig& Config =
+			WaveConfig[WaveIndex];
+
+		if (
+			Config.SpawnCount <= 0
+			|| Config.SpawnInterval <= 0.0f
+			|| Config.CombatTime <= 0.0f
+			)
+		{
+			UE_LOG(
+				LogTemp,
+				Error,
+				TEXT(
+					"Invalid WaveConfig - "
+					"Wave: %d, Count: %d, "
+					"Interval: %.1f, CombatTime: %.1f"
+				),
+				WaveIndex + 1,
+				Config.SpawnCount,
+				Config.SpawnInterval,
+				Config.CombatTime
+			);
+
+			return;
+		}
+	}
+
 	FindWaveSpawner();
 	FindCore();
 	StartPreparation();
-
 }
 
 void ACDGameMode::HandleEnemySpawned(

@@ -8,15 +8,35 @@ struct FCDWaveConfig
 {
     GENERATED_BODY()
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wave")
-    float PreparationTime = 10.0f;
+    UPROPERTY(
+        EditAnywhere,
+        BlueprintReadWrite,
+        Category = "Wave",
+        meta = (ClampMin = "0.0")
+    )
+    float PreparationTime = 0.0f;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wave")
+    UPROPERTY(
+        EditAnywhere,
+        BlueprintReadWrite,
+        Category = "Wave",
+        meta = (ClampMin = "1.0")
+    )
     float CombatTime = 30.0f;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wave")
+    UPROPERTY(
+        EditAnywhere,
+        BlueprintReadWrite,
+        Category = "Wave",
+        meta = (ClampMin = "1")
+    )
     int32 SpawnCount = 5;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wave")
+    UPROPERTY(
+        EditAnywhere,
+        BlueprintReadWrite,
+        Category = "Wave",
+        meta = (ClampMin = "0.1")
+    )
     float SpawnInterval = 2.0f;
 };
