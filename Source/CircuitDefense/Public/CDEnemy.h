@@ -26,6 +26,12 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Enemy")
 	float GetHealthPercent() const;
 
+	UFUNCTION(BlueprintPure, Category = "Enemy|Reward")
+	int32 GetResourceReward() const;
+
+	UFUNCTION(BlueprintPure, Category = "Enemy|State")
+	bool WasKilled() const;
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -47,6 +53,14 @@ protected:
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Enemy|Health")
 	float CurrentHealth = 30.0f;
+
+	UPROPERTY(
+		EditDefaultsOnly,
+		BlueprintReadOnly,
+		Category = "Enemy|Reward",
+		meta = (ClampMin = "0")
+	)
+	int32 ResourceReward = 5;
 
 private:
 	UPROPERTY()

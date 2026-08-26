@@ -160,3 +160,12 @@ float ACDEnemy::GetHealthPercent() const
 	return CurrentHealth / MaxHealth;
 }
 
+int32 ACDEnemy::GetResourceReward() const
+{
+	return ResourceReward;
+}
+
+bool ACDEnemy::WasKilled() const
+{
+	return bDead;
+}

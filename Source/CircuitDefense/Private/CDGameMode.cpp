@@ -80,6 +80,39 @@ void ACDGameMode::HandleEnemyDestroyed(
 	AActor* DestroyedActor
 )
 {
+	ACDEnemy* DestroyedEnemy =
+		Cast<ACDEnemy>(DestroyedActor);
+
+	if (
+		DestroyedEnemy != nullptr
+		&& DestroyedEnemy->WasKilled()
+		&& !bGameOver
+		&& !bGameClear
+		)
+	{
+		ACDGameState* CDGameState =
+			GetGameState<ACDGameState>();
+
+		if (IsValid(CDGameState))
+		{
+			const int32 Reward =
+				DestroyedEnemy->GetResourceReward();
+
+			CDGameState->AddResources(Reward);
+
+			UE_LOG(
+				LogTemp,
+				Display,
+				TEXT(
+					"Enemy kill reward - "
+					"Reward: %d, Resources: %d"
+				),
+				Reward,
+				CDGameState->GetCurrentResources()
+			);
+		}
+	}
+
 	AliveEnemyCount = FMath::Max(
 		AliveEnemyCount - 1,
 		0
