@@ -967,6 +967,24 @@ void ACDPlayerController::SetupInputComponent()
         return;
     }
 
+    if (IsValid(RestartGameAction))
+    {
+        EnhancedInputComponent->BindAction(
+            RestartGameAction,
+            ETriggerEvent::Started,
+            this,
+            &ACDPlayerController::HandleRestartGame
+        );
+    }
+    else
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT("RestartGameAction is not assigned")
+        );
+    }
+
     EnhancedInputComponent->BindAction(
         AttackAction,
         ETriggerEvent::Started,
@@ -1155,4 +1173,86 @@ void ACDPlayerController::HandleGamePhaseChanged(
     bShowMouseCursor = false;
     bEnableClickEvents = false;
     bEnableMouseOverEvents = false;
+}
+
+void ACDPlayerController::HandleRestartGame(
+    const FInputActionValue& InputActionValue
+)
+{
+    UWorld* World = GetWorld();
+
+    if (!IsValid(World))
+    {
+        return;
+    }
+
+    ACDGameState* CDGameState =
+        World->GetGameState<ACDGameState>();
+
+    if (!IsValid(CDGameState))
+    {
+        return;
+    }
+
+    if (
+        CDGameState->CurrentPhase
+        != ECDGamePhase::Victory
+        && CDGameState->CurrentPhase
+        != ECDGamePhase::GameOver
+        )
+    {
+        UE_LOG(
+            LogTemp,
+            Display,
+            TEXT(
+                "Restart ignored - Current phase: %d"
+            ),
+            static_cast<int32>(
+                CDGameState->CurrentPhase
+                )
+        );
+
+        return;
+    }
+
+    RestartCurrentLevel();
+}
+
+void ACDPlayerController::RestartCurrentLevel()
+{
+    UWorld* World = GetWorld();
+
+    if (!IsValid(World))
+    {
+        return;
+    }
+
+    const FString CurrentLevelName =
+        UGameplayStatics::GetCurrentLevelName(
+            this,
+            true
+        );
+
+    if (CurrentLevelName.IsEmpty())
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT("Restart failed: level name is empty")
+        );
+
+        return;
+    }
+
+    UE_LOG(
+        LogTemp,
+        Display,
+        TEXT("Restarting level: %s"),
+        *CurrentLevelName
+    );
+
+    UGameplayStatics::OpenLevel(
+        this,
+        FName(*CurrentLevelName)
+    );
 }

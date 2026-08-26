@@ -21,6 +21,9 @@ class CIRCUITDEFENSE_API ACDPlayerController
 public:
     ACDPlayerController();
 
+    UFUNCTION(BlueprintCallable, Category = "Game")
+    void RestartCurrentLevel();
+
 protected:
     virtual void BeginPlay() override;
     virtual void SetupInputComponent() override;
@@ -54,6 +57,13 @@ protected:
         Category = "Input"
     )
     TObjectPtr<UInputAction> RemoveDeviceAction;
+
+    UPROPERTY(
+        EditDefaultsOnly,
+        BlueprintReadOnly,
+        Category = "Input"
+    )
+    TObjectPtr<UInputAction> RestartGameAction;
 
     UPROPERTY(
         EditDefaultsOnly,
@@ -210,5 +220,9 @@ private:
     UFUNCTION()
     void HandleGamePhaseChanged(
         ECDGamePhase NewPhase
+    );
+
+    void HandleRestartGame(
+        const FInputActionValue& InputActionValue
     );
 };

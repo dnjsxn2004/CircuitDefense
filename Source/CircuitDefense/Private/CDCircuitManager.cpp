@@ -1,12 +1,15 @@
 #include "CDCircuitManager.h"
 
 #include "CDPlaceableDevice.h"
-#include "Kismet/GameplayStatics.h"
+
 #include "Containers/Queue.h"
+#include "DrawDebugHelpers.h"
+#include "Engine/World.h"
+#include "Kismet/GameplayStatics.h"
 
 ACDCircuitManager::ACDCircuitManager()
 {
-    PrimaryActorTick.bCanEverTick = false;
+    PrimaryActorTick.bCanEverTick = true;
 }
 
 void ACDCircuitManager::BeginPlay()
@@ -16,8 +19,19 @@ void ACDCircuitManager::BeginPlay()
     RefreshCircuit();
 }
 
+void ACDCircuitManager::Tick(
+    float DeltaSeconds
+)
+{
+    Super::Tick(DeltaSeconds);
+
+    DrawPowerConnections();
+}
+
 void ACDCircuitManager::RefreshCircuit()
 {
+    ActiveConnections.Reset();
+
     TArray<ACDPlaceableDevice*> InstalledDevices;
 
     GatherInstalledDevices(InstalledDevices);
@@ -25,7 +39,6 @@ void ACDCircuitManager::RefreshCircuit()
     TSet<ACDPlaceableDevice*> PoweredDevices;
     TQueue<ACDPlaceableDevice*> DeviceQueue;
 
-    // 모든 발전기를 전력 탐색 시작점으로 등록합니다.
     for (
         ACDPlaceableDevice* Device
         : InstalledDevices
@@ -57,8 +70,6 @@ void ACDCircuitManager::RefreshCircuit()
             continue;
         }
 
-        // 공격 장치는 전력을 받아도
-        // 다른 장치로 전달하지 않습니다.
         if (
             CurrentDevice->GetDeviceType()
             == ECDDeviceType::Attack
@@ -109,8 +120,14 @@ void ACDCircuitManager::RefreshCircuit()
 
             PoweredDevices.Add(CandidateDevice);
 
-            // 릴레이만 다음 전력 탐색 지점으로
-            // Queue에 추가합니다.
+            FCDPowerConnection NewConnection;
+            NewConnection.SourceDevice = CurrentDevice;
+            NewConnection.TargetDevice = CandidateDevice;
+
+            ActiveConnections.Add(
+                MoveTemp(NewConnection)
+            );
+
             if (
                 CandidateDevice->GetDeviceType()
                 == ECDDeviceType::Relay
@@ -141,10 +158,12 @@ void ACDCircuitManager::RefreshCircuit()
         Display,
         TEXT(
             "Circuit refreshed - "
-            "Installed: %d, Powered: %d"
+            "Installed: %d, Powered: %d, "
+            "Connections: %d"
         ),
         InstalledDevices.Num(),
-        PoweredDevices.Num()
+        PoweredDevices.Num(),
+        ActiveConnections.Num()
     );
 }
 
@@ -183,5 +202,56 @@ void ACDCircuitManager::GatherInstalledDevices(
         }
 
         OutDevices.Add(Device);
+    }
+}
+
+void ACDCircuitManager::DrawPowerConnections() const
+{
+    if (!bDrawDebugConnections)
+    {
+        return;
+    }
+
+    UWorld* World = GetWorld();
+
+    if (!IsValid(World))
+    {
+        return;
+    }
+
+    const FVector HeightOffset =
+        FVector::UpVector * ConnectionLineHeight;
+
+    for (
+        const FCDPowerConnection& Connection
+        : ActiveConnections
+        )
+    {
+        ACDPlaceableDevice* SourceDevice =
+            Connection.SourceDevice.Get();
+
+        ACDPlaceableDevice* TargetDevice =
+            Connection.TargetDevice.Get();
+
+        if (
+            !IsValid(SourceDevice)
+            || !IsValid(TargetDevice)
+            )
+        {
+            continue;
+        }
+
+        DrawDebugLine(
+            World,
+            SourceDevice->GetActorLocation()
+            + HeightOffset,
+            TargetDevice->GetActorLocation()
+            + HeightOffset,
+            ConnectionLineColor,
+            false,
+            0.0f,
+            0,
+            ConnectionLineThickness
+        );
     }
 }
