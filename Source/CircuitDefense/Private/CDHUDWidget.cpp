@@ -169,6 +169,18 @@ void UCDHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 		);
 	}
 
+	if (IsValid(ResourceText))
+	{
+		ResourceText->SetText(
+			FText::FromString(
+				FString::Printf(
+					TEXT("RESOURCE %d"),
+					CDGameState->GetCurrentResources()
+				)
+			)
+		);
+	}
+
 	if (!IsValid(CoreActor))
 	{
 		return;

@@ -27,6 +27,9 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UTextBlock> WaveText;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> ResourceText;
 	
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UProgressBar> CoreHPBar;
