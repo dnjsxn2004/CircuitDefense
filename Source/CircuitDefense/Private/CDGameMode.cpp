@@ -87,6 +87,32 @@ void ACDGameMode::HandleEnemySpawned(
 		return;
 	}
 
+	if (!WaveConfig.IsValidIndex(ActiveWaveIndex))
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT(
+				"Enemy initialization failed - "
+				"Invalid wave index: %d"
+			),
+			ActiveWaveIndex
+		);
+
+		SpawnedEnemy->Destroy();
+		return;
+	}
+
+	const FCDWaveConfig& CurrentWaveConfig =
+		WaveConfig[ActiveWaveIndex];
+
+	SpawnedEnemy->InitializeForWave(
+		CurrentWaveConfig.EnemyMaxHealth,
+		CurrentWaveConfig.EnemyMoveSpeed,
+		CurrentWaveConfig.EnemyCoreDamage,
+		CurrentWaveConfig.EnemyResourceReward
+	);
+
 	++AliveEnemyCount;
 
 	SpawnedEnemy->OnDestroyed.AddDynamic(
@@ -97,9 +123,7 @@ void ACDGameMode::HandleEnemySpawned(
 	UE_LOG(
 		LogTemp,
 		Display,
-		TEXT(
-			"Enemy registered - Alive: %d"
-		),
+		TEXT("Enemy registered - Alive: %d"),
 		AliveEnemyCount
 	);
 }

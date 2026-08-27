@@ -32,6 +32,52 @@ void ACDEnemy::BeginPlay()
 	FindTargetCore();
 }
 
+void ACDEnemy::InitializeForWave(
+	float InMaxHealth,
+	float InMoveSpeed,
+	float InCoreDamage,
+	int32 InResourceReward
+)
+{
+	MaxHealth = FMath::Max(
+		InMaxHealth,
+		1.0f
+	);
+
+	CurrentHealth = MaxHealth;
+
+	MoveSpeed = FMath::Max(
+		InMoveSpeed,
+		0.0f
+	);
+
+	CoreDamage = FMath::Max(
+		InCoreDamage,
+		0.0f
+	);
+
+	ResourceReward = FMath::Max(
+		InResourceReward,
+		0
+	);
+
+	UE_LOG(
+		LogTemp,
+		Display,
+		TEXT(
+			"Enemy wave stats initialized - "
+			"Enemy: %s, Health: %.0f, "
+			"Speed: %.0f, CoreDamage: %.0f, "
+			"Reward: %d"
+		),
+		*GetName(),
+		MaxHealth,
+		MoveSpeed,
+		CoreDamage,
+		ResourceReward
+	);
+}
+
 void ACDEnemy::FindTargetCore()
 {
 	AActor* FoundActor = UGameplayStatics::GetActorOfClass(this, ACDCore::StaticClass());

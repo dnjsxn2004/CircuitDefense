@@ -32,6 +32,14 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Enemy|State")
 	bool WasKilled() const;
 
+	UFUNCTION(BlueprintCallable, Category = "Enemy")
+	void InitializeForWave(
+		float InMaxHealth,
+		float InMoveSpeed,
+		float InCoreDamage,
+		int32 InResourceReward
+	);
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
