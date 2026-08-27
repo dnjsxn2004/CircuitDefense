@@ -41,6 +41,9 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UTextBlock> SelectedDeviceText;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> ControlGuideText;
 	
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UProgressBar> CoreHPBar;

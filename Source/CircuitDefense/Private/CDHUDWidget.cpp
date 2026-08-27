@@ -105,31 +105,42 @@ void UCDHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 	}
 
 	FString PhaseName;
+	FString ControlGuide;
 
 	switch (CDGameState->CurrentPhase)
 	{
 	case ECDGamePhase::Preparation:
 		PhaseName = TEXT("PREPARATION");
+		ControlGuide =
+			TEXT(
+				"1/2/3 SELECT | LEFT CLICK PLACE | "
+				"X REMOVE | START WAVE BUTTON"
+			);
 		break;
-			
+
 	case ECDGamePhase::Combat:
 		PhaseName = TEXT("COMBAT");
+		ControlGuide = TEXT("LEFT CLICK ATTACK");
 		break;
-			
-	case ECDGamePhase::GameOver:
-		PhaseName = TEXT("GAMEOVER");
-		break;
-			
+
 	case ECDGamePhase::WaveClear:
-		PhaseName = TEXT("WAVECLEAR");
+		PhaseName = TEXT("WAVE CLEAR");
+		ControlGuide = TEXT("PREPARING NEXT WAVE");
 		break;
-				
+
+	case ECDGamePhase::GameOver:
+		PhaseName = TEXT("GAME OVER");
+		ControlGuide = TEXT("R RESTART");
+		break;
+
 	case ECDGamePhase::Victory:
 		PhaseName = TEXT("VICTORY");
+		ControlGuide = TEXT("R RESTART");
 		break;
 
 	default:
 		PhaseName = TEXT("UNKNOWN");
+		ControlGuide = TEXT("");
 		break;
 	}
 
@@ -138,6 +149,15 @@ void UCDHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 		PhaseText->SetText(
 			FText::FromString(
 				PhaseName
+			)
+		);
+	}
+
+	if (IsValid(ControlGuideText))
+	{
+		ControlGuideText->SetText(
+			FText::FromString(
+				ControlGuide
 			)
 		);
 	}
