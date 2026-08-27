@@ -568,6 +568,11 @@ void ACDPlayerController::ConfirmPlacement()
 
     PlacementPreview = nullptr;
     bCanPlacePreview = false;
+
+    if (IsValid(HUDWidget))
+    {
+        HUDWidget->ClearSelectedDeviceInfo();
+    }
 }
 
 void ACDPlayerController::CancelPlacement()
@@ -589,6 +594,11 @@ void ACDPlayerController::CancelPlacement()
     PlacementPreview->Destroy();
     PlacementPreview = nullptr;
     bCanPlacePreview = false;
+
+    if (IsValid(HUDWidget))
+    {
+        HUDWidget->ClearSelectedDeviceInfo();
+    }
 }
 
 bool ACDPlayerController::IsPlacementLocationValid(const FHitResult& SurfaceHit) const
@@ -1115,6 +1125,14 @@ void ACDPlayerController::StartPlacement(
     }
 
     PlacementPreview->SetPlacementPreview(true);
+
+    if (IsValid(HUDWidget))
+    {
+        HUDWidget->SetSelectedDeviceInfo(
+            PlacementPreview->GetDeviceType(),
+            PlacementPreview->GetInstallationCost()
+        );
+    }
 
     bCanPlacePreview = false;
 

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "CDDeviceType.h"
 #include "CDHUDWidget.generated.h"
 
 class ACDCore;
@@ -16,6 +17,13 @@ class CIRCUITDEFENSE_API UCDHUDWidget : public UUserWidget
 {
 	GENERATED_BODY()
 	
+public:
+	void SetSelectedDeviceInfo(
+		ECDDeviceType DeviceType,
+		int32 Cost
+	);
+
+	void ClearSelectedDeviceInfo();
 
 protected:
 	virtual void NativeConstruct() override;
@@ -30,6 +38,9 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UTextBlock> ResourceText;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> SelectedDeviceText;
 	
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UProgressBar> CoreHPBar;

@@ -64,6 +64,8 @@ void UCDHUDWidget::NativeConstruct()
 			TEXT("HUD could not find Core")
 		);
 	}
+
+	ClearSelectedDeviceInfo();
 }
 
 void UCDHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
@@ -212,6 +214,62 @@ void UCDHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 			)
 		);
 	}
+}
+
+void UCDHUDWidget::SetSelectedDeviceInfo(
+	ECDDeviceType DeviceType,
+	int32 Cost
+)
+{
+	if (!IsValid(SelectedDeviceText))
+	{
+		return;
+	}
+
+	FString DeviceName;
+
+	switch (DeviceType)
+	{
+	case ECDDeviceType::PowerSource:
+		DeviceName = TEXT("POWER SOURCE");
+		break;
+
+	case ECDDeviceType::Relay:
+		DeviceName = TEXT("RELAY");
+		break;
+
+	case ECDDeviceType::Attack:
+		DeviceName = TEXT("ATTACK DEVICE");
+		break;
+
+	default:
+		DeviceName = TEXT("UNKNOWN");
+		break;
+	}
+
+	SelectedDeviceText->SetText(
+		FText::FromString(
+			FString::Printf(
+				TEXT("SELECTED %s | COST %d"),
+				*DeviceName,
+				FMath::Max(Cost, 0)
+			)
+		)
+	);
+}
+
+void UCDHUDWidget::ClearSelectedDeviceInfo()
+{
+	if (!IsValid(SelectedDeviceText))
+	{
+		return;
+	}
+
+	SelectedDeviceText->SetText(
+		FText::FromString(
+			TEXT("SELECTED NONE")
+		)
+	);
 }
 
 void UCDHUDWidget::HandleStartWaveClicked()
