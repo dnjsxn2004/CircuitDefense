@@ -11,6 +11,7 @@ class ACDCore;
 class UProgressBar;
 class UTextBlock;
 class UButton;
+class UWidget;
 
 UCLASS()
 class CIRCUITDEFENSE_API UCDHUDWidget : public UUserWidget
@@ -44,6 +45,15 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UTextBlock> ControlGuideText;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UWidget> ResultPanel;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> ResultText;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UButton> RestartButton;
 	
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UProgressBar> CoreHPBar;
@@ -65,5 +75,8 @@ protected:
 private:
 	UFUNCTION()
 	void HandleStartWaveClicked();
+
+	UFUNCTION()
+	void HandleRestartClicked();
 
 };

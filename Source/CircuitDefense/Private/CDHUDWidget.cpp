@@ -11,6 +11,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "CDGameMode.h"
 #include "Components/Button.h"
+#include "CDPlayerController.h"
 
 void UCDHUDWidget::NativeConstruct()
 {
@@ -39,6 +40,27 @@ void UCDHUDWidget::NativeConstruct()
 		);
 	}
 
+	if (IsValid(RestartButton))
+	{
+		RestartButton->OnClicked.RemoveDynamic(
+			this,
+			&UCDHUDWidget::HandleRestartClicked
+		);
+
+		RestartButton->OnClicked.AddDynamic(
+			this,
+			&UCDHUDWidget::HandleRestartClicked
+		);
+	}
+	else
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT("RestartButton is not bound")
+		);
+	}
+
 	AActor* FoundCore =
 		UGameplayStatics::GetActorOfClass(
 			this,
@@ -62,6 +84,13 @@ void UCDHUDWidget::NativeConstruct()
 			LogTemp,
 			Error,
 			TEXT("HUD could not find Core")
+		);
+	}
+
+	if (IsValid(ResultPanel))
+	{
+		ResultPanel->SetVisibility(
+			ESlateVisibility::Collapsed
 		);
 	}
 
@@ -158,6 +187,37 @@ void UCDHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 		ControlGuideText->SetText(
 			FText::FromString(
 				ControlGuide
+			)
+		);
+	}
+
+	const bool bIsVictory =
+		CDGameState->CurrentPhase
+		== ECDGamePhase::Victory;
+
+	const bool bIsGameOver =
+		CDGameState->CurrentPhase
+		== ECDGamePhase::GameOver;
+
+	const bool bShowResult =
+		bIsVictory || bIsGameOver;
+
+	if (IsValid(ResultPanel))
+	{
+		ResultPanel->SetVisibility(
+			bShowResult
+			? ESlateVisibility::Visible
+			: ESlateVisibility::Collapsed
+		);
+	}
+
+	if (IsValid(ResultText) && bShowResult)
+	{
+		ResultText->SetText(
+			FText::FromString(
+				bIsVictory
+				? TEXT("VICTORY")
+				: TEXT("GAME OVER")
 			)
 		);
 	}
@@ -290,6 +350,29 @@ void UCDHUDWidget::ClearSelectedDeviceInfo()
 			TEXT("SELECTED NONE")
 		)
 	);
+}
+
+void UCDHUDWidget::HandleRestartClicked()
+{
+	ACDPlayerController* CDPlayerController =
+		Cast<ACDPlayerController>(
+			GetOwningPlayer()
+		);
+
+	if (!IsValid(CDPlayerController))
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT(
+				"Restart failed: "
+				"CDPlayerController is invalid"
+			)
+		);
+		return;
+	}
+
+	CDPlayerController->RestartCurrentLevel();
 }
 
 void UCDHUDWidget::HandleStartWaveClicked()

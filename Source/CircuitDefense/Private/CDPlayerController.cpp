@@ -1180,6 +1180,40 @@ void ACDPlayerController::HandleGamePhaseChanged(
         return;
     }
 
+    if (
+        NewPhase == ECDGamePhase::Victory
+        || NewPhase == ECDGamePhase::GameOver
+        )
+    {
+        if (IsValid(PlacementPreview))
+        {
+            CancelPlacement();
+        }
+
+        FInputModeGameAndUI InputMode;
+
+        if (IsValid(HUDWidget))
+        {
+            InputMode.SetWidgetToFocus(
+                HUDWidget->TakeWidget()
+            );
+        }
+
+        InputMode.SetLockMouseToViewportBehavior(
+            EMouseLockMode::DoNotLock
+        );
+
+        InputMode.SetHideCursorDuringCapture(false);
+
+        SetInputMode(InputMode);
+
+        bShowMouseCursor = true;
+        bEnableClickEvents = true;
+        bEnableMouseOverEvents = true;
+
+        return;
+    }
+
     if (IsValid(PlacementPreview))
     {
         CancelPlacement();
