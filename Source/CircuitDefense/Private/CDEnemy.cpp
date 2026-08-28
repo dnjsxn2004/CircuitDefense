@@ -6,6 +6,8 @@
 #include "CDCore.h"
 #include "Components/StaticMeshComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "Components/WidgetComponent.h"
+#include "CDEnemyHealthWidget.h"
 
 // Sets default values
 ACDEnemy::ACDEnemy()
@@ -18,6 +20,29 @@ ACDEnemy::ACDEnemy()
 	SetRootComponent(EnemyMesh);
 
 	EnemyMesh->SetMobility(EComponentMobility::Movable);
+
+	HealthWidgetComponent =
+		CreateDefaultSubobject<UWidgetComponent>(
+			TEXT("HealthWidgetComponent")
+		);
+
+	HealthWidgetComponent->SetupAttachment(EnemyMesh);
+
+	HealthWidgetComponent->SetRelativeLocation(
+		FVector(0.0f, 0.0f, 100.0f)
+	);
+
+	HealthWidgetComponent->SetWidgetSpace(
+		EWidgetSpace::Screen
+	);
+
+	HealthWidgetComponent->SetDrawSize(
+		FVector2D(120.0f, 16.0f)
+	);
+
+	HealthWidgetComponent->SetCollisionEnabled(
+		ECollisionEnabled::NoCollision
+	);
 }
 
 // Called when the game starts or when spawned
@@ -30,6 +55,32 @@ void ACDEnemy::BeginPlay()
 	bDead = false;
 
 	FindTargetCore();
+
+	if (IsValid(HealthWidgetComponent))
+	{
+		HealthWidgetComponent->InitWidget();
+
+		HealthWidget =
+			Cast<UCDEnemyHealthWidget>(
+				HealthWidgetComponent
+				->GetUserWidgetObject()
+			);
+	}
+
+	if (!IsValid(HealthWidget))
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT(
+				"Enemy health widget is invalid - "
+				"Enemy: %s"
+			),
+			*GetName()
+		);
+	}
+
+	UpdateHealthWidget();
 }
 
 void ACDEnemy::InitializeForWave(
@@ -60,6 +111,8 @@ void ACDEnemy::InitializeForWave(
 		InResourceReward,
 		0
 	);
+
+	UpdateHealthWidget();
 
 	UE_LOG(
 		LogTemp,
@@ -169,6 +222,8 @@ void ACDEnemy::ApplyEnemyDamage(float DamageAmount)
 		MaxHealth
 	);
 
+	UpdateHealthWidget();
+
 	UE_LOG(
 		LogTemp,
 		Display,
@@ -194,6 +249,18 @@ void ACDEnemy::ApplyEnemyDamage(float DamageAmount)
 	);
 
 	Destroy();
+}
+
+void ACDEnemy::UpdateHealthWidget()
+{
+	if (!IsValid(HealthWidget))
+	{
+		return;
+	}
+
+	HealthWidget->SetHealthPercent(
+		GetHealthPercent()
+	);
 }
 
 float ACDEnemy::GetHealthPercent() const

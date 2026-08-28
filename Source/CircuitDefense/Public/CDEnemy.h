@@ -8,6 +8,8 @@
 
 class ACDCore;
 class UStaticMeshComponent;
+class UWidgetComponent;
+class UCDEnemyHealthWidget;
 
 UCLASS()
 class CIRCUITDEFENSE_API ACDEnemy : public AActor
@@ -70,9 +72,21 @@ protected:
 	)
 	int32 ResourceReward = 5;
 
+	UPROPERTY(
+		VisibleAnywhere,
+		BlueprintReadOnly,
+		Category = "Enemy|UI"
+	)
+	TObjectPtr<UWidgetComponent> HealthWidgetComponent;
+
 private:
 	UPROPERTY()
 	TObjectPtr<ACDCore> TargetCore;
+
+	UPROPERTY()
+	TObjectPtr<UCDEnemyHealthWidget> HealthWidget;
+
+	void UpdateHealthWidget();
 
 	bool bReachedCore = false;
 	bool bDead = false;
