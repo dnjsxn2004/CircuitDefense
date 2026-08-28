@@ -111,6 +111,36 @@ void ACDGameMode::HandleEnemySpawned(
 		return;
 	}
 
+	ACDGameState* CDGameState =
+		GetGameState<ACDGameState>();
+
+	if (
+		bGameOver
+		|| bGameClear
+		|| !IsValid(CDGameState)
+		|| CDGameState->CurrentPhase
+		!= ECDGamePhase::Combat
+		)
+	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT(
+				"Late enemy spawn rejected - "
+				"Enemy: %s, Phase: %d"
+			),
+			*SpawnedEnemy->GetName(),
+			IsValid(CDGameState)
+			? static_cast<int32>(
+				CDGameState->CurrentPhase
+				)
+			: -1
+		);
+
+		SpawnedEnemy->Destroy();
+		return;
+	}
+
 	if (!WaveConfig.IsValidIndex(ActiveWaveIndex))
 	{
 		UE_LOG(
