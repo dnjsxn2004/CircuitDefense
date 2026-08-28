@@ -11,6 +11,8 @@ class UMaterialInstanceDynamic;
 class UMaterialInterface;
 class USceneComponent;
 class UStaticMeshComponent;
+class UWidgetComponent;
+class UCDDeviceStatusWidget;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
 	FOnDevicePowerChanged,
@@ -70,6 +72,7 @@ public:
 	FOnDevicePowerChanged OnDevicePowerChanged;
 
 protected:
+	virtual void BeginPlay() override;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Device")
 	TObjectPtr<USceneComponent> SceneRoot;
@@ -129,9 +132,23 @@ protected:
 	)
 	bool bPowered = false;
 
+	UPROPERTY(
+		VisibleAnywhere,
+		BlueprintReadOnly,
+		Category = "Device|UI"
+	)
+	TObjectPtr<UWidgetComponent>
+		PowerStatusWidgetComponent;
+
 private:
 	void ApplyPreviewMaterial();
 	void RestoreOriginalMaterials();
+
+	UPROPERTY()
+	TObjectPtr<UCDDeviceStatusWidget>
+		PowerStatusWidget;
+
+	void UpdatePowerStatusWidget();
 
 
 };

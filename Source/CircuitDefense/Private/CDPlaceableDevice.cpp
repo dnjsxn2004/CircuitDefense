@@ -4,6 +4,8 @@
 #include "Components/StaticMeshComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
+#include "Components/WidgetComponent.h"
+#include "CDDeviceStatusWidget.h"
 
 ACDPlaceableDevice::ACDPlaceableDevice()
 {
@@ -46,6 +48,66 @@ ACDPlaceableDevice::ACDPlaceableDevice()
     DeviceMesh->SetRelativeScale3D(
         FVector::OneVector
     );
+
+    PowerStatusWidgetComponent =
+        CreateDefaultSubobject<UWidgetComponent>(
+            TEXT("PowerStatusWidgetComponent")
+        );
+
+    PowerStatusWidgetComponent->SetupAttachment(
+        SceneRoot
+    );
+
+    PowerStatusWidgetComponent->SetRelativeLocation(
+        FVector(0.0f, 0.0f, 100.0f)
+    );
+
+    PowerStatusWidgetComponent->SetWidgetSpace(
+        EWidgetSpace::Screen
+    );
+
+    PowerStatusWidgetComponent->SetDrawSize(
+        FVector2D(140.0f, 30.0f)
+    );
+
+    PowerStatusWidgetComponent->SetCollisionEnabled(
+        ECollisionEnabled::NoCollision
+    );
+
+    PowerStatusWidgetComponent->SetVisibility(
+        false
+    );
+}
+
+void ACDPlaceableDevice::BeginPlay()
+{
+    Super::BeginPlay();
+
+    if (IsValid(PowerStatusWidgetComponent))
+    {
+        PowerStatusWidgetComponent->InitWidget();
+
+        PowerStatusWidget =
+            Cast<UCDDeviceStatusWidget>(
+                PowerStatusWidgetComponent
+                ->GetUserWidgetObject()
+            );
+    }
+
+    if (!IsValid(PowerStatusWidget))
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT(
+                "Device status widget is invalid - "
+                "Device: %s"
+            ),
+            *GetName()
+        );
+    }
+
+    UpdatePowerStatusWidget();
 }
 
 void ACDPlaceableDevice::CompletePlacement()
@@ -69,6 +131,7 @@ void ACDPlaceableDevice::CompletePlacement()
 
     RestoreOriginalMaterials();
     SetActorEnableCollision(true);
+    UpdatePowerStatusWidget();
 
     UE_LOG(
         LogTemp,
@@ -280,12 +343,17 @@ void ACDPlaceableDevice::SetPowered(
 {
     if (bPowered == bNewPowered)
     {
+        UpdatePowerStatusWidget();
         return;
     }
 
     bPowered = bNewPowered;
 
-    OnDevicePowerChanged.Broadcast(bPowered);
+    UpdatePowerStatusWidget();
+
+    OnDevicePowerChanged.Broadcast(
+        bPowered
+    );
 
     UE_LOG(
         LogTemp,
@@ -304,4 +372,33 @@ void ACDPlaceableDevice::SetPowered(
 float ACDPlaceableDevice::GetConnectionRange() const
 {
     return ConnectionRange;
+}
+
+void ACDPlaceableDevice::UpdatePowerStatusWidget()
+{
+    if (!IsValid(PowerStatusWidgetComponent))
+    {
+        return;
+    }
+
+    const bool bShouldShowStatus =
+        bInstalled
+        && !bPlacementPreview;
+
+    PowerStatusWidgetComponent->SetVisibility(
+        bShouldShowStatus,
+        true
+    );
+
+    if (
+        !bShouldShowStatus
+        || !IsValid(PowerStatusWidget)
+        )
+    {
+        return;
+    }
+
+    PowerStatusWidget->SetPowerState(
+        bPowered
+    );
 }
