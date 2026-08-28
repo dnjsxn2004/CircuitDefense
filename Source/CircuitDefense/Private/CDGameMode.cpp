@@ -75,6 +75,30 @@ void ACDGameMode::BeginPlay()
 
 	FindWaveSpawner();
 	FindCore();
+
+	if (
+		!IsValid(WaveSpawner)
+		|| !IsValid(CoreActor)
+		)
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT(
+				"Game initialization failed - "
+				"WaveSpawner: %s, Core: %s"
+			),
+			IsValid(WaveSpawner)
+			? TEXT("Valid")
+			: TEXT("Invalid"),
+			IsValid(CoreActor)
+			? TEXT("Valid")
+			: TEXT("Invalid")
+		);
+
+		return;
+	}
+
 	StartPreparation();
 }
 
