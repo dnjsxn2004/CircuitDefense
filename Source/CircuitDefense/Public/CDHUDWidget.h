@@ -44,6 +44,9 @@ protected:
 	TObjectPtr<UTextBlock> WaveText;
 
 	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> AliveEnemyText;
+
+	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UTextBlock> ResourceText;
 
 	UPROPERTY(meta = (BindWidget))

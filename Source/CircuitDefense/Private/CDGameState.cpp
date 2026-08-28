@@ -6,6 +6,7 @@ ACDGameState::ACDGameState()
     CurrentWave = 0;
     RemainingTime = 0.0f;
     CurrentResources = 0;
+    AliveEnemyCount = 0;
 }
 
 void ACDGameState::BeginPlay()
@@ -168,7 +169,24 @@ void ACDGameState::AddResources(
     );
 }
 
-int32 ACDGameState::GetCurrentResources() const
+int32 ACDGameState::GetCurrentResources() 
+const
 {
     return CurrentResources;
+}
+
+void ACDGameState::SetAliveEnemyCount(
+    int32 NewAliveEnemyCount
+)
+{
+    AliveEnemyCount =
+        FMath::Max(
+            NewAliveEnemyCount,
+            0
+        );
+}
+
+int32 ACDGameState::GetAliveEnemyCount() const
+{
+    return AliveEnemyCount;
 }

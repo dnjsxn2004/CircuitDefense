@@ -169,6 +169,10 @@ void ACDGameMode::HandleEnemySpawned(
 
 	++AliveEnemyCount;
 
+	CDGameState->SetAliveEnemyCount(
+		AliveEnemyCount
+	);
+
 	SpawnedEnemy->OnDestroyed.AddDynamic(
 		this,
 		&ACDGameMode::HandleEnemyDestroyed
@@ -223,6 +227,16 @@ void ACDGameMode::HandleEnemyDestroyed(
 		AliveEnemyCount - 1,
 		0
 	);
+
+	ACDGameState* UpdatedGameState =
+		GetGameState<ACDGameState>();
+
+	if (IsValid(UpdatedGameState))
+	{
+		UpdatedGameState->SetAliveEnemyCount(
+			AliveEnemyCount
+		);
+	}
 
 	UE_LOG(
 		LogTemp,
@@ -358,6 +372,11 @@ void ACDGameMode::StartCombat()
 	const FCDWaveConfig& CurrentConfig = WaveConfig[ActiveWaveIndex];
 
 	AliveEnemyCount = 0;
+
+	CDGameState->SetAliveEnemyCount(
+		AliveEnemyCount
+	);
+
 	bSpawningCompleted = false;
 	bWaveFinishing = false;
 

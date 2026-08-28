@@ -236,6 +236,32 @@ void UCDHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 		);
 	}
 
+	if (IsValid(AliveEnemyText))
+	{
+		const bool bShowAliveEnemyCount =
+			CDGameState->CurrentPhase
+			== ECDGamePhase::Combat;
+
+		AliveEnemyText->SetVisibility(
+			bShowAliveEnemyCount
+			? ESlateVisibility::HitTestInvisible
+			: ESlateVisibility::Collapsed
+		);
+
+		if (bShowAliveEnemyCount)
+		{
+			AliveEnemyText->SetText(
+				FText::FromString(
+					FString::Printf(
+						TEXT("ALIVE %d"),
+						CDGameState
+						->GetAliveEnemyCount()
+					)
+				)
+			);
+		}
+	}
+
 	if (IsValid(RemainingTimeText))
 	{
 		const int32 DisplayTime =

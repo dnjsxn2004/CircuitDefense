@@ -40,6 +40,13 @@ public:
     int32 CurrentWave = 0;
 
     UPROPERTY(
+        VisibleInstanceOnly,
+        BlueprintReadOnly,
+        Category = "Wave"
+    )
+    int32 AliveEnemyCount = 0;
+
+    UPROPERTY(
         BlueprintReadOnly,
         Category = "Game State"
     )
@@ -103,7 +110,18 @@ public:
     int32 GetCurrentResources() const;
 
     void SetCurrentWave(int32 NewWave);
+
     void SetRemainingTime(float NewTime);
+
+    void SetAliveEnemyCount(
+        int32 NewAliveEnemyCount
+    );
+
+    UFUNCTION(
+        BlueprintPure,
+        Category = "Wave"
+    )
+    int32 GetAliveEnemyCount() const;
 
 protected:
     virtual void BeginPlay() override;

@@ -483,7 +483,7 @@ void ACDPlayerController::UpdatePlacementPreview()
         if (IsValid(HUDWidget))
         {
             HUDWidget->SetPlacementStatusMessage(
-                TEXT("INVALID CURSOR POSITION")
+                TEXT("NO PLACEMENT SURFACE")
             );
         }
 
