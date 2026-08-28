@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "CDDeviceType.h"
+#include "CDGamePhase.h"
 #include "CDPlaceableDevice.generated.h"
 
 class UMaterialInstanceDynamic;
@@ -13,6 +14,7 @@ class USceneComponent;
 class UStaticMeshComponent;
 class UWidgetComponent;
 class UCDDeviceStatusWidget;
+class ACDGameState;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
 	FOnDevicePowerChanged,
@@ -73,6 +75,10 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+
+	virtual void EndPlay(
+		const EEndPlayReason::Type EndPlayReason
+	) override;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Device")
 	TObjectPtr<USceneComponent> SceneRoot;
@@ -147,6 +153,14 @@ private:
 	UPROPERTY()
 	TObjectPtr<UCDDeviceStatusWidget>
 		PowerStatusWidget;
+
+	UPROPERTY()
+	TObjectPtr<ACDGameState> CachedGameState;
+
+	UFUNCTION()
+	void HandleGamePhaseChanged(
+		ECDGamePhase NewPhase
+	);
 
 	void UpdatePowerStatusWidget();
 

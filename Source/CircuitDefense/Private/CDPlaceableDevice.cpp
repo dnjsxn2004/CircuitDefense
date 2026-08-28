@@ -6,6 +6,8 @@
 #include "Materials/MaterialInterface.h"
 #include "Components/WidgetComponent.h"
 #include "CDDeviceStatusWidget.h"
+#include "CDGameState.h"
+#include "Engine/World.h"
 
 ACDPlaceableDevice::ACDPlaceableDevice()
 {
@@ -107,7 +109,49 @@ void ACDPlaceableDevice::BeginPlay()
         );
     }
 
+    UWorld* World = GetWorld();
+
+    if (IsValid(World))
+    {
+        CachedGameState =
+            World->GetGameState<ACDGameState>();
+    }
+
+    if (IsValid(CachedGameState))
+    {
+        CachedGameState
+            ->OnGamePhaseChanged.RemoveDynamic(
+                this,
+                &ACDPlaceableDevice
+                ::HandleGamePhaseChanged
+            );
+
+        CachedGameState
+            ->OnGamePhaseChanged.AddDynamic(
+                this,
+                &ACDPlaceableDevice
+                ::HandleGamePhaseChanged
+            );
+    }
+
     UpdatePowerStatusWidget();
+}
+
+void ACDPlaceableDevice::EndPlay(
+    const EEndPlayReason::Type EndPlayReason
+)
+{
+    if (IsValid(CachedGameState))
+    {
+        CachedGameState
+            ->OnGamePhaseChanged.RemoveDynamic(
+                this,
+                &ACDPlaceableDevice
+                ::HandleGamePhaseChanged
+            );
+    }
+
+    Super::EndPlay(EndPlayReason);
 }
 
 void ACDPlaceableDevice::CompletePlacement()
@@ -174,6 +218,8 @@ void ACDPlaceableDevice::SetPlacementPreview(
         RestoreOriginalMaterials();
         SetActorEnableCollision(true);
     }
+
+    UpdatePowerStatusWidget();
 
     UE_LOG(
         LogTemp,
@@ -381,9 +427,15 @@ void ACDPlaceableDevice::UpdatePowerStatusWidget()
         return;
     }
 
+    const bool bIsPreparation =
+        IsValid(CachedGameState)
+        && CachedGameState->CurrentPhase
+        == ECDGamePhase::Preparation;
+
     const bool bShouldShowStatus =
         bInstalled
-        && !bPlacementPreview;
+        && !bPlacementPreview
+        && bIsPreparation;
 
     PowerStatusWidgetComponent->SetVisibility(
         bShouldShowStatus,
@@ -401,4 +453,11 @@ void ACDPlaceableDevice::UpdatePowerStatusWidget()
     PowerStatusWidget->SetPowerState(
         bPowered
     );
+}
+
+void ACDPlaceableDevice::HandleGamePhaseChanged(
+    ECDGamePhase NewPhase
+)
+{
+    UpdatePowerStatusWidget();
 }
