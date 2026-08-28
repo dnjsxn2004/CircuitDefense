@@ -18,6 +18,8 @@
 #include "Engine/OverlapResult.h"
 #include "CDCircuitManager.h"
 #include "Kismet/GameplayStatics.h"
+#include "CDCore.h"
+#include "CDWaveSpawner.h"
 
 ACDPlayerController::ACDPlayerController()
 {
@@ -442,6 +444,13 @@ void ACDPlayerController::UpdatePlacementPreview()
 
     if (!bDeprojected)
     {
+        if (IsValid(HUDWidget))
+        {
+            HUDWidget->SetPlacementStatusMessage(
+                TEXT("INVALID CURSOR POSITION")
+            );
+        }
+
         bCanPlacePreview = false;
 
         PlacementPreview->SetActorHiddenInGame(true);
@@ -471,6 +480,13 @@ void ACDPlayerController::UpdatePlacementPreview()
 
     if (!bHit)
     {
+        if (IsValid(HUDWidget))
+        {
+            HUDWidget->SetPlacementStatusMessage(
+                TEXT("INVALID CURSOR POSITION")
+            );
+        }
+
         bCanPlacePreview = false;
 
         PlacementPreview->SetActorHiddenInGame(true);
@@ -483,10 +499,33 @@ void ACDPlayerController::UpdatePlacementPreview()
         HitResult.ImpactPoint
     );
 
-    bCanPlacePreview =
-        IsPlacementLocationValid(HitResult);
+    FString FailureMessage;
 
-    PlacementPreview->SetPlacementValid(bCanPlacePreview);
+    bCanPlacePreview =
+        IsPlacementLocationValid(
+            HitResult,
+            FailureMessage
+        );
+
+    PlacementPreview->SetPlacementValid(
+        bCanPlacePreview
+    );
+
+    if (IsValid(HUDWidget))
+    {
+        if (bCanPlacePreview)
+        {
+            HUDWidget
+                ->ClearPlacementStatusMessage();
+        }
+        else
+        {
+            HUDWidget
+                ->SetPlacementStatusMessage(
+                    FailureMessage
+                );
+        }
+    }
 }
 
 void ACDPlayerController::ConfirmPlacement()
@@ -577,6 +616,11 @@ void ACDPlayerController::ConfirmPlacement()
 
 void ACDPlayerController::CancelPlacement()
 {
+    if (IsValid(HUDWidget))
+    {
+        HUDWidget->ClearPlacementStatusMessage();
+    }
+
     if (!IsValid(PlacementPreview))
     {
         return;
@@ -601,17 +645,28 @@ void ACDPlayerController::CancelPlacement()
     }
 }
 
-bool ACDPlayerController::IsPlacementLocationValid(const FHitResult& SurfaceHit) const
+bool ACDPlayerController::IsPlacementLocationValid(
+    const FHitResult& SurfaceHit,
+    FString& OutFailureMessage
+) const
 {
+    OutFailureMessage.Reset();
+
     UWorld* World = GetWorld();
 
     if (!IsValid(World))
     {
+        OutFailureMessage =
+            TEXT("PLACEMENT UNAVAILABLE");
+
         return false;
     }
 
     if (!IsValid(PlacementPreview))
     {
+        OutFailureMessage =
+            TEXT("PLACEMENT PREVIEW INVALID");
+
         return false;
     }
 
@@ -620,6 +675,9 @@ bool ACDPlayerController::IsPlacementLocationValid(const FHitResult& SurfaceHit)
         < MinimumPlacementNormalZ
         )
     {
+        OutFailureMessage =
+            TEXT("INVALID SURFACE");
+
         return false;
     }
 
@@ -628,6 +686,9 @@ bool ACDPlayerController::IsPlacementLocationValid(const FHitResult& SurfaceHit)
 
     if (!IsValid(CDGameState))
     {
+        OutFailureMessage =
+            TEXT("PLACEMENT UNAVAILABLE");
+
         return false;
     }
 
@@ -636,6 +697,52 @@ bool ACDPlayerController::IsPlacementLocationValid(const FHitResult& SurfaceHit)
 
     if (!CDGameState->CanAfford(InstallationCost))
     {
+        OutFailureMessage =
+            TEXT("NOT ENOUGH RESOURCES");
+
+        return false;
+    }
+
+    const float ProtectedRadiusSquared =
+        FMath::Square(ProtectedActorRadius);
+
+    AActor* CoreActor =
+        UGameplayStatics::GetActorOfClass(
+            World,
+            ACDCore::StaticClass()
+        );
+
+    if (
+        IsValid(CoreActor)
+        && FVector::DistSquared2D(
+            SurfaceHit.ImpactPoint,
+            CoreActor->GetActorLocation()
+        ) <= ProtectedRadiusSquared
+        )
+    {
+        OutFailureMessage =
+            TEXT("PROTECTED AREA");
+
+        return false;
+    }
+
+    AActor* WaveSpawnerActor =
+        UGameplayStatics::GetActorOfClass(
+            World,
+            ACDWaveSpawner::StaticClass()
+        );
+
+    if (
+        IsValid(WaveSpawnerActor)
+        && FVector::DistSquared2D(
+            SurfaceHit.ImpactPoint,
+            WaveSpawnerActor->GetActorLocation()
+        ) <= ProtectedRadiusSquared
+        )
+    {
+        OutFailureMessage =
+            TEXT("PROTECTED AREA");
+
         return false;
     }
 
@@ -654,11 +761,15 @@ bool ACDPlayerController::IsPlacementLocationValid(const FHitResult& SurfaceHit)
         false
     );
 
-    QueryParams.AddIgnoredActor(PlacementPreview);
+    QueryParams.AddIgnoredActor(
+        PlacementPreview
+    );
 
     if (APawn* ControlledPawn = GetPawn())
     {
-        QueryParams.AddIgnoredActor(ControlledPawn);
+        QueryParams.AddIgnoredActor(
+            ControlledPawn
+        );
     }
 
     TArray<FOverlapResult> OverlapResults;
@@ -674,8 +785,10 @@ bool ACDPlayerController::IsPlacementLocationValid(const FHitResult& SurfaceHit)
         QueryParams
     );
 
-    for (const FOverlapResult& OverlapResult
-        : OverlapResults)
+    for (
+        const FOverlapResult& OverlapResult
+        : OverlapResults
+        )
     {
         ACDPlaceableDevice* OtherDevice =
             Cast<ACDPlaceableDevice>(
@@ -691,6 +804,9 @@ bool ACDPlayerController::IsPlacementLocationValid(const FHitResult& SurfaceHit)
         {
             continue;
         }
+
+        OutFailureMessage =
+            TEXT("SPACE OCCUPIED");
 
         return false;
     }

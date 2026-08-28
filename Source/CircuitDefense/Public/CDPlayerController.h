@@ -101,6 +101,14 @@ protected:
         EditDefaultsOnly,
         BlueprintReadOnly,
         Category = "Placement",
+        meta = (ClampMin = "0.0")
+    )
+    float ProtectedActorRadius = 200.0f;
+
+    UPROPERTY(
+        EditDefaultsOnly,
+        BlueprintReadOnly,
+        Category = "Placement",
         meta = (
             ClampMin = "0.0",
             ClampMax = "1.0"
@@ -212,7 +220,8 @@ private:
     void TryRemoveDevice();
 
     bool IsPlacementLocationValid(
-        const FHitResult& SurfaceHit
+        const FHitResult& SurfaceHit,
+        FString& OutFailureMessage
     ) const;
 
     bool bCanPlacePreview = false;

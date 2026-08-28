@@ -95,6 +95,8 @@ void UCDHUDWidget::NativeConstruct()
 	}
 
 	ClearSelectedDeviceInfo();
+
+	ClearPlacementStatusMessage();
 }
 
 void UCDHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
@@ -350,6 +352,31 @@ void UCDHUDWidget::ClearSelectedDeviceInfo()
 			TEXT("SELECTED NONE")
 		)
 	);
+}
+
+void UCDHUDWidget::SetPlacementStatusMessage(
+	const FString& Message
+)
+{
+	if (!IsValid(PlacementStatusText))
+	{
+		return;
+	}
+
+	PlacementStatusText->SetText(
+		FText::FromString(Message)
+	);
+
+	PlacementStatusText->SetVisibility(
+		Message.IsEmpty()
+		? ESlateVisibility::Collapsed
+		: ESlateVisibility::HitTestInvisible
+	);
+}
+
+void UCDHUDWidget::ClearPlacementStatusMessage()
+{
+	SetPlacementStatusMessage(TEXT(""));
 }
 
 void UCDHUDWidget::HandleRestartClicked()

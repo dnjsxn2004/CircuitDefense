@@ -26,6 +26,12 @@ public:
 
 	void ClearSelectedDeviceInfo();
 
+	void SetPlacementStatusMessage(
+		const FString& Message
+	);
+
+	void ClearPlacementStatusMessage();
+
 protected:
 	virtual void NativeConstruct() override;
 
@@ -42,6 +48,9 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UTextBlock> SelectedDeviceText;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> PlacementStatusText;
 
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UTextBlock> ControlGuideText;

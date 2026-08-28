@@ -253,13 +253,28 @@ void ACDEnemy::ApplyEnemyDamage(float DamageAmount)
 
 void ACDEnemy::UpdateHealthWidget()
 {
-	if (!IsValid(HealthWidget))
+	if (
+		!IsValid(HealthWidget)
+		|| !IsValid(HealthWidgetComponent)
+		)
 	{
 		return;
 	}
 
+	const float HealthPercent =
+		GetHealthPercent();
+
 	HealthWidget->SetHealthPercent(
-		GetHealthPercent()
+		HealthPercent
+	);
+
+	const bool bShouldShowHealthBar =
+		HealthPercent > 0.0f
+		&& HealthPercent < 1.0f;
+
+	HealthWidgetComponent->SetVisibility(
+		bShouldShowHealthBar,
+		true
 	);
 }
 
