@@ -5,6 +5,7 @@
 #include "CDEnemy.h"
 #include "CDGameState.h"
 #include "CDPlayerController.h"
+#include "CDPlayerState.h"
 #include "CDWaveSpawner.h"
 #include "CDCore.h"
 #include "Kismet/GameplayStatics.h"
@@ -12,12 +13,46 @@
 
 ACDGameMode::ACDGameMode()
 {
-	GameStateClass = 
+	GameStateClass =
 		ACDGameState::StaticClass();
 
-	PlayerControllerClass = 
+	PlayerControllerClass =
 		ACDPlayerController::StaticClass();
 
+	PlayerStateClass =
+		ACDPlayerState::StaticClass();
+
+}
+
+void ACDGameMode::PostLogin(
+	APlayerController* NewPlayer
+)
+{
+	Super::PostLogin(NewPlayer);
+
+	InitializePlayerRespawnSystem(
+		Cast<ACDPlayerController>(NewPlayer)
+	);
+}
+
+void ACDGameMode::EndPlay(
+	const EEndPlayReason::Type EndPlayReason
+)
+{
+	ClearPlayerRespawnTimers();
+
+	if (IsValid(CachedPlayerState))
+	{
+		CachedPlayerState->OnPlayerDeath.RemoveDynamic(
+			this,
+			&ACDGameMode::HandlePlayerDeath
+		);
+	}
+
+	CachedPlayerController = nullptr;
+	CachedPlayerState = nullptr;
+
+	Super::EndPlay(EndPlayReason);
 }
 
 void ACDGameMode::BeginPlay()
@@ -486,7 +521,7 @@ void ACDGameMode::StartNextWave()
 
 void ACDGameMode::CompleteAllWaves()
 {
-	if (bGameClear||bGameOver)
+	if (bGameClear || bGameOver)
 	{
 		return;
 	}
@@ -495,6 +530,7 @@ void ACDGameMode::CompleteAllWaves()
 	bWaveFinishing = true;
 
 	GetWorldTimerManager().ClearTimer(PhaseTimerHandle);
+	ClearPlayerRespawnTimers();
 
 	if (IsValid(WaveSpawner))
 	{
@@ -544,7 +580,7 @@ void ACDGameMode::UpdatePhaseTimer()
 	if (bGameOver)
 	{
 		GetWorldTimerManager().ClearTimer(PhaseTimerHandle);
-		
+
 		return;
 	}
 
@@ -606,7 +642,7 @@ void ACDGameMode::UpdatePhaseTimer()
 
 void ACDGameMode::HandleCoreDestroyed()
 {
-	if (bGameOver||bGameClear)
+	if (bGameOver || bGameClear)
 	{
 		return;
 	}
@@ -617,6 +653,8 @@ void ACDGameMode::HandleCoreDestroyed()
 	GetWorldTimerManager().ClearTimer(
 		PhaseTimerHandle
 	);
+
+	ClearPlayerRespawnTimers();
 
 	if (IsValid(WaveSpawner))
 	{
@@ -795,4 +833,171 @@ void ACDGameMode::RequestStartWave()
 	);
 
 	StartCombat();
+}
+
+void ACDGameMode::InitializePlayerRespawnSystem(
+	ACDPlayerController* PlayerController
+)
+{
+	if (!IsValid(PlayerController))
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT("Player respawn initialization failed: PlayerController is invalid")
+		);
+		return;
+	}
+
+	if (IsValid(CachedPlayerState))
+	{
+		CachedPlayerState->OnPlayerDeath.RemoveDynamic(
+			this,
+			&ACDGameMode::HandlePlayerDeath
+		);
+	}
+
+	CachedPlayerController = PlayerController;
+	CachedPlayerState =
+		PlayerController->GetPlayerState<ACDPlayerState>();
+
+	if (!IsValid(CachedPlayerState))
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT("Player respawn initialization failed: CDPlayerState is invalid")
+		);
+		CachedPlayerController = nullptr;
+		return;
+	}
+
+	CachedPlayerState->OnPlayerDeath.RemoveDynamic(
+		this,
+		&ACDGameMode::HandlePlayerDeath
+	);
+
+	CachedPlayerState->OnPlayerDeath.AddDynamic(
+		this,
+		&ACDGameMode::HandlePlayerDeath
+	);
+
+	ClearPlayerRespawnTimers();
+	CachedPlayerState->ResetForNewGame();
+	CachedPlayerController->SetPlayerGameplayEnabled(true);
+}
+
+void ACDGameMode::HandlePlayerDeath()
+{
+	if (
+		bGameOver
+		|| bGameClear
+		|| !IsValid(CachedPlayerController)
+		|| !IsValid(CachedPlayerState)
+		)
+	{
+		return;
+	}
+
+	GetWorldTimerManager().ClearTimer(
+		PlayerRespawnTimerHandle
+	);
+
+	GetWorldTimerManager().ClearTimer(
+		PlayerInvulnerabilityTimerHandle
+	);
+
+	CachedPlayerState->SetRespawnInvulnerable(false);
+	CachedPlayerController->SetPlayerGameplayEnabled(false);
+
+	if (PlayerRespawnDelay <= 0.0f)
+	{
+		RespawnPlayer();
+		return;
+	}
+
+	GetWorldTimerManager().SetTimer(
+		PlayerRespawnTimerHandle,
+		this,
+		&ACDGameMode::RespawnPlayer,
+		PlayerRespawnDelay,
+		false
+	);
+
+	UE_LOG(
+		LogTemp,
+		Display,
+		TEXT("Player died - Respawn in %.1f seconds"),
+		PlayerRespawnDelay
+	);
+}
+
+void ACDGameMode::RespawnPlayer()
+{
+	GetWorldTimerManager().ClearTimer(
+		PlayerRespawnTimerHandle
+	);
+
+	if (
+		bGameOver
+		|| bGameClear
+		|| !IsValid(CachedPlayerController)
+		|| !IsValid(CachedPlayerState)
+		)
+	{
+		return;
+	}
+
+	CachedPlayerState->CompleteRespawn();
+
+	CachedPlayerController->SetPlayerGameplayEnabled(true);
+
+	if (PlayerInvulnerabilityDuration <= 0.0f)
+	{
+		EndPlayerInvulnerability();
+		return;
+	}
+
+	GetWorldTimerManager().SetTimer(
+		PlayerInvulnerabilityTimerHandle,
+		this,
+		&ACDGameMode::EndPlayerInvulnerability,
+		PlayerInvulnerabilityDuration,
+		false
+	);
+
+	UE_LOG(
+		LogTemp,
+		Display,
+		TEXT("Player respawned - Invulnerable for %.1f seconds"),
+		PlayerInvulnerabilityDuration
+	);
+}
+
+void ACDGameMode::EndPlayerInvulnerability()
+{
+	GetWorldTimerManager().ClearTimer(
+		PlayerInvulnerabilityTimerHandle
+	);
+
+	if (IsValid(CachedPlayerState))
+	{
+		CachedPlayerState->SetRespawnInvulnerable(false);
+	}
+}
+
+void ACDGameMode::ClearPlayerRespawnTimers()
+{
+	GetWorldTimerManager().ClearTimer(
+		PlayerRespawnTimerHandle
+	);
+
+	GetWorldTimerManager().ClearTimer(
+		PlayerInvulnerabilityTimerHandle
+	);
+
+	if (IsValid(CachedPlayerState))
+	{
+		CachedPlayerState->SetRespawnInvulnerable(false);
+	}
 }

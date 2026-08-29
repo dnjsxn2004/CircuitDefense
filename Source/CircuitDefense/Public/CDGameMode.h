@@ -11,15 +11,17 @@ class ACDEnemy;
 class ACDWaveSpawner;
 class ACDEnemySpawner;
 class ACDCore;
+class ACDPlayerController;
+class ACDPlayerState;
 /**
- * 
+ *
  */
 UCLASS()
 class CIRCUITDEFENSE_API ACDGameMode : public AGameModeBase
 {
 	GENERATED_BODY()
 
-public :
+public:
 	ACDGameMode();
 
 	UFUNCTION(
@@ -30,12 +32,36 @@ public :
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void PostLogin(
+		APlayerController* NewPlayer
+	) override;
+	virtual void EndPlay(
+		const EEndPlayReason::Type EndPlayReason
+	) override;
+
+	UPROPERTY(
+		EditDefaultsOnly,
+		BlueprintReadOnly,
+		Category = "Player|Respawn",
+		meta = (ClampMin = "0.0")
+	)
+	float PlayerRespawnDelay = 3.0f;
+
+	UPROPERTY(
+		EditDefaultsOnly,
+		BlueprintReadOnly,
+		Category = "Player|Respawn",
+		meta = (ClampMin = "0.0")
+	)
+	float PlayerInvulnerabilityDuration = 2.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Wave")
 	TArray<FCDWaveConfig> WaveConfig;
 
 private:
 	FTimerHandle PhaseTimerHandle;
+	FTimerHandle PlayerRespawnTimerHandle;
+	FTimerHandle PlayerInvulnerabilityTimerHandle;
 
 	int32 ActiveWaveIndex = 0;
 	int32 AliveEnemyCount = 0;
@@ -48,10 +74,10 @@ private:
 
 	UFUNCTION()
 	void HandleEnemyDestroyed(AActor* DestroyedActor);
-	
+
 	UFUNCTION()
 	void HandleSpawningCompleted();
-	
+
 	void TryFinishWave();
 	void StartPreparation();
 	void StartCombat();
@@ -77,5 +103,24 @@ private:
 	void FindCore();
 
 	void FindWaveSpawner();
+
+	void InitializePlayerRespawnSystem(
+		ACDPlayerController* PlayerController
+	);
+
+	void RespawnPlayer();
+	void EndPlayerInvulnerability();
+	void ClearPlayerRespawnTimers();
+
+	UFUNCTION()
+	void HandlePlayerDeath();
+
+	UPROPERTY()
+	TObjectPtr<ACDPlayerController>
+		CachedPlayerController;
+
+	UPROPERTY()
+	TObjectPtr<ACDPlayerState>
+		CachedPlayerState;
 
 };

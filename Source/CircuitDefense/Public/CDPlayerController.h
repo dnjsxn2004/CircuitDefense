@@ -11,6 +11,7 @@ class UCDHUDWidget;
 class UInputAction;
 class UInputMappingContext;
 class ACDCircuitManager;
+class ACDPlayerState;
 
 UCLASS()
 class CIRCUITDEFENSE_API ACDPlayerController
@@ -23,6 +24,22 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "Game")
     void RestartCurrentLevel();
+
+    UFUNCTION(BlueprintCallable, Category = "Player|Health")
+    bool ApplyDamageToPlayer(
+        float DamageAmount
+    );
+
+    UFUNCTION(BlueprintCallable, Category = "Player|State")
+    void SetPlayerGameplayEnabled(
+        bool bEnabled
+    );
+
+    UFUNCTION(BlueprintPure, Category = "Player|State")
+    bool IsPlayerGameplayEnabled() const
+    {
+        return bPlayerGameplayEnabled;
+    }
 
 protected:
     virtual void BeginPlay() override;
@@ -180,11 +197,13 @@ protected:
         AttackDeviceClass;
 
     UPROPERTY(
-    Transient
+        Transient
     )
-    TObjectPtr<ACDCircuitManager> 
+    TObjectPtr<ACDCircuitManager>
         CircuitManager;
 private:
+    bool CanProcessGameplayInput() const;
+
     void HandleAttack(
         const FInputActionValue& InputActionValue
     );
@@ -234,4 +253,6 @@ private:
     void HandleRestartGame(
         const FInputActionValue& InputActionValue
     );
+
+    bool bPlayerGameplayEnabled = true;
 };

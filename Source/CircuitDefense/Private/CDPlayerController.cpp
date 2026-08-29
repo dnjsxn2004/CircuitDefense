@@ -13,6 +13,7 @@
 #include "Components/PrimitiveComponent.h"
 #include "CDEnemy.h"
 #include "CDGameState.h"
+#include "CDPlayerState.h"
 #include "CDHUDWidget.h"
 #include "CDPlaceableDevice.h"
 #include "Engine/OverlapResult.h"
@@ -25,9 +26,84 @@ ACDPlayerController::ACDPlayerController()
 {
     PrimaryActorTick.bCanEverTick = true;
 
-	bShowMouseCursor = false;
-	bEnableClickEvents = false;
-	bEnableMouseOverEvents = false;
+    bShowMouseCursor = false;
+    bEnableClickEvents = false;
+    bEnableMouseOverEvents = false;
+}
+
+bool ACDPlayerController::ApplyDamageToPlayer(
+    float DamageAmount
+)
+{
+    ACDPlayerState* CDPlayerState =
+        GetPlayerState<ACDPlayerState>();
+
+    if (!IsValid(CDPlayerState))
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT("Player damage failed: CDPlayerState is invalid")
+        );
+        return false;
+    }
+
+    return CDPlayerState->ApplyPlayerDamage(
+        DamageAmount
+    );
+}
+
+void ACDPlayerController::SetPlayerGameplayEnabled(
+    bool bEnabled
+)
+{
+    bPlayerGameplayEnabled = bEnabled;
+
+    if (!bPlayerGameplayEnabled)
+    {
+        if (IsValid(PlacementPreview))
+        {
+            CancelPlacement();
+        }
+
+        FInputModeGameOnly InputMode;
+        SetInputMode(InputMode);
+        bShowMouseCursor = false;
+        bEnableClickEvents = false;
+        bEnableMouseOverEvents = false;
+        return;
+    }
+
+    UWorld* World = GetWorld();
+
+    if (!IsValid(World))
+    {
+        return;
+    }
+
+    ACDGameState* CDGameState =
+        World->GetGameState<ACDGameState>();
+
+    if (IsValid(CDGameState))
+    {
+        HandleGamePhaseChanged(
+            CDGameState->CurrentPhase
+        );
+    }
+}
+
+bool ACDPlayerController::CanProcessGameplayInput() const
+{
+    if (!bPlayerGameplayEnabled)
+    {
+        return false;
+    }
+
+    const ACDPlayerState* CDPlayerState =
+        GetPlayerState<ACDPlayerState>();
+
+    return IsValid(CDPlayerState)
+        && !CDPlayerState->IsDead();
 }
 
 void ACDPlayerController::BeginPlay()
@@ -148,7 +224,7 @@ void ACDPlayerController::BeginPlay()
         );
         return;
     }
-    
+
     HUDWidget->SetVisibility(
         ESlateVisibility::Visible
     );
@@ -191,7 +267,10 @@ void ACDPlayerController::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
 
-    if (IsValid(PlacementPreview))
+    if (
+        IsValid(PlacementPreview)
+        && CanProcessGameplayInput()
+        )
     {
         UpdatePlacementPreview();
     }
@@ -199,6 +278,11 @@ void ACDPlayerController::Tick(float DeltaSeconds)
 
 void ACDPlayerController::HandleAttack(const FInputActionValue& InputActionValue)
 {
+    if (!CanProcessGameplayInput())
+    {
+        return;
+    }
+
     UWorld* World = GetWorld();
 
     if (!IsValid(World))
@@ -243,6 +327,11 @@ void ACDPlayerController::HandleSelectPowerSource(
     const FInputActionValue& InputActionValue
 )
 {
+    if (!CanProcessGameplayInput())
+    {
+        return;
+    }
+
     StartPlacement(PowerSourceDeviceClass);
 }
 
@@ -250,6 +339,11 @@ void ACDPlayerController::HandleSelectRelay(
     const FInputActionValue& InputActionValue
 )
 {
+    if (!CanProcessGameplayInput())
+    {
+        return;
+    }
+
     StartPlacement(RelayDeviceClass);
 }
 
@@ -257,16 +351,31 @@ void ACDPlayerController::HandleSelectAttackDevice(
     const FInputActionValue& InputActionValue
 )
 {
+    if (!CanProcessGameplayInput())
+    {
+        return;
+    }
+
     StartPlacement(AttackDeviceClass);
 }
 
 void ACDPlayerController::HandleCancelPlacement(const FInputActionValue& InputActionValue)
 {
+    if (!CanProcessGameplayInput())
+    {
+        return;
+    }
+
     CancelPlacement();
 }
 
 void ACDPlayerController::PerformAttackTrace()
 {
+    if (!CanProcessGameplayInput())
+    {
+        return;
+    }
+
     if (!IsValid(PlayerCameraManager))
     {
         UE_LOG(
@@ -414,7 +523,7 @@ void ACDPlayerController::PerformAttackTrace()
         ),
         *HitEnemyName,
         AttackDamage
-        );
+    );
 }
 
 void ACDPlayerController::UpdatePlacementPreview()
@@ -464,7 +573,7 @@ void ACDPlayerController::UpdatePlacementPreview()
     {
         QueryParams.AddIgnoredActor(ControlledPawn);
     }
-    
+
     QueryParams.AddIgnoredActor(PlacementPreview);
 
     FHitResult HitResult;
@@ -530,6 +639,11 @@ void ACDPlayerController::UpdatePlacementPreview()
 
 void ACDPlayerController::ConfirmPlacement()
 {
+    if (!CanProcessGameplayInput())
+    {
+        return;
+    }
+
     if (!IsValid(PlacementPreview))
     {
         UE_LOG(
@@ -818,6 +932,11 @@ void ACDPlayerController::HandleRemoveDevice(
     const FInputActionValue& InputActionValue
 )
 {
+    if (!CanProcessGameplayInput())
+    {
+        return;
+    }
+
     UWorld* World = GetWorld();
 
     if (!IsValid(World))
@@ -867,6 +986,11 @@ void ACDPlayerController::HandleRemoveDevice(
 
 void ACDPlayerController::TryRemoveDevice()
 {
+    if (!CanProcessGameplayInput())
+    {
+        return;
+    }
+
     if (!IsValid(PlayerCameraManager))
     {
         return;
@@ -1164,6 +1288,11 @@ void ACDPlayerController::StartPlacement(
     TSubclassOf<ACDPlaceableDevice> DeviceClass
 )
 {
+    if (!CanProcessGameplayInput())
+    {
+        return;
+    }
+
     UWorld* World = GetWorld();
 
     if (!IsValid(World))
@@ -1270,6 +1399,25 @@ void ACDPlayerController::HandleGamePhaseChanged(
     ECDGamePhase NewPhase
 )
 {
+    const bool bIsResultPhase =
+        NewPhase == ECDGamePhase::Victory
+        || NewPhase == ECDGamePhase::GameOver;
+
+    if (!bPlayerGameplayEnabled && !bIsResultPhase)
+    {
+        if (IsValid(PlacementPreview))
+        {
+            CancelPlacement();
+        }
+
+        FInputModeGameOnly InputMode;
+        SetInputMode(InputMode);
+        bShowMouseCursor = false;
+        bEnableClickEvents = false;
+        bEnableMouseOverEvents = false;
+        return;
+    }
+
     if (NewPhase == ECDGamePhase::Preparation)
     {
         FInputModeGameAndUI InputMode;
